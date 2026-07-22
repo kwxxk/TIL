@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth" style="scroll-padding-top: 5rem;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="title">I AM JIU-JITSU | 주짓수 게이미피케이션 플랫폼</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind 다크모드 설정 활성화
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            950: '#030712',
+                        }
+                    },
+                    animation: {
+                        'float-up': 'floatUp 10s infinite linear',
+                    },
+                    keyframes: {
+                        floatUp: {
+                            '0%': { transform: 'translateY(100vh) scale(0)', opacity: 0 },
+                            '10%': { opacity: 1 },
+                            '90%': { opacity: 1 },
+                            '100%': { transform: 'translateY(-10vh) scale(1)', opacity: 0 },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Font & FontAwesome for Premium Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- 폰트 로딩 차단 방지를 위한 CORS 속성 추가 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <!-- 승급 폭죽 효과를 위한 Canvas Confetti 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Custom CSS for Fluid Transitions and Gamification Elements -->
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            /* 1. 디자인 수정: 주짓수 도복(🥋) 커스텀 마우스 커서 적용 */
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text x="0" y="24" font-size="24">🥋</text></svg>'), auto;
+        }
+        /* 버튼 등 클릭 가능한 요소에도 커서 유지 */
+        a, button, input, textarea, select {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><text x="0" y="24" font-size="24">🥋</text></svg>'), pointer;
+        }
+
+        /* 스크롤 애니메이션 클래스 */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* 벨트 등급별 테두리 및 뱃지 그라디언트 효과 */
+        .belt-card {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+        }
+        /* 터치 친화적 가로 스크롤 커스텀 바 숨기기 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        /* 2. 타이핑 효과 커서 애니메이션 */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-start infinite;
+            color: #6366f1; /* indigo-500 */
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* 3. 모바일 기기 노치(안전 영역) 대응 */
+        @supports (padding-bottom: env(safe-area-inset-bottom)) {
+            body {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
+
+    <!-- 상단 스크롤 진행 표시 바 -->
+    <div id="scroll-progress" class="fixed top-0 left-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 z-50 w-0 transition-all duration-100"></div>
+
+    <!-- 반응형 헤더 & 내비게이션 바 -->
+    <nav class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 브랜드 로고 -->
+                <div class="flex items-center gap-2">
+                    <span class="p-2 bg-indigo-600 rounded-lg text-white">
+                        <i class="fa-solid fa-kaaba text-lg animate-spin-slow"></i>
+                    </span>
+                    <span class="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-400">
+                        OSS! JIU-JITSU
+                    </span>
+                </div>
+
+                <!-- 데스크탑 메뉴 (웹 표준 href 속성 복구 및 클래스 추가) -->
+                <div class="hidden md:flex items-center space-x-6 font-semibold">
+                    <a href="#intro" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.philosophy">철학</a>
+                    <a href="#belts" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.belts">벨트 여정</a>
+                    <a href="#techniques" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.techniques">대표 기술</a>
+                    <a href="#etiquette" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.etiquette">안전 매뉴얼</a>
+                    <a href="#dashboard" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.dashboard">수련 대시보드</a>
+                    <a href="#style-quiz" class="nav-link cursor-pointer hover:text-indigo-500 transition-colors py-2" data-i18n="nav.styleQuiz">스타일 테스트</a>
+                </div>
+
+                <!-- 유틸리티 메뉴 (인라인 onclick 제거) -->
+                <div class="flex items-center gap-4">
+                    <!-- 언어 스위처 버튼 -->
+                    <button id="language-toggle" class="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:scale-105 active:scale-95 transition-all text-slate-600 dark:text-slate-300" aria-label="언어 변경">
+                        EN
+                    </button>
+                    <!-- 테마 스위처 버튼 -->
+                    <button id="theme-toggle" class="p-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:scale-105 active:scale-95 transition-all text-slate-600 dark:text-slate-300" aria-label="테마 변경">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+                    <!-- 모바일 메뉴 버튼 -->
+                    <button id="menu-btn" class="md:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 모바일 아코디언 메뉴 (웹 표준 href 속성 복구 및 클래스 추가) -->
+        <div id="mobile-menu" class="hidden md:hidden absolute w-full left-0 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md transition-all duration-300 shadow-xl">
+            <div class="px-4 py-4 space-y-2 flex flex-col font-medium">
+                <a href="#intro" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.philosophy">철학</a>
+                <a href="#belts" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.belts">벨트 여정</a>
+                <a href="#techniques" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.techniques">대표 기술</a>
+                <a href="#etiquette" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.etiquette">안전 매뉴얼</a>
+                <a href="#dashboard" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.dashboard">수련 대시보드</a>
+                <a href="#style-quiz" class="nav-link cursor-pointer p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" data-i18n="nav.styleQuiz">스타일 테스트</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 패러랙스 공간감을 유도하는 히어로 헤더 (테마 전환 수정 완료) -->
+    <header id="intro" class="relative overflow-hidden py-16 sm:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 text-slate-900 dark:text-white transition-colors duration-300">
+        <!-- 3. 애니메이션 수정: 배경 파티클 효과 추가 -->
+        <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none" id="particles">
+            <!-- 자바스크립트로 동적 생성됨 -->
+        </div>
+
+        <!-- 배경 데코 요소 -->
+        <div class="absolute inset-0 z-0 opacity-10 pointer-events-none">
+            <div class="absolute top-10 left-10 w-72 h-72 rounded-full bg-indigo-500 blur-3xl"></div>
+            <div class="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-purple-500 blur-3xl"></div>
+        </div>
+
+        <div class="max-w-5xl mx-auto text-center relative z-10 reveal">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-sm mb-6 font-semibold animate-bounce transition-colors">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 dark:bg-indigo-400"></span>
+                <span data-i18n="hero.tagline">지레와 기하학이 융합된 인간 체스</span>
+            </div>
+            
+            <!-- 4. 애니메이션 수정: 타이핑 효과가 적용될 h1 태그 -->
+            <h1 class="text-4xl sm:text-7xl font-black tracking-tight mb-8 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-indigo-600 to-indigo-800 dark:from-white dark:via-indigo-200 dark:to-indigo-500 min-h-[96px] sm:min-h-[144px] transition-colors">
+                <span id="typed-text" class="typing-cursor"></span>
+            </h1>
+
+            <p class="text-base sm:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto mb-10 leading-relaxed font-light transition-colors">
+                <span data-i18n="hero.description">물리적 근력 차이를 극복하는 완벽한 레버리지 기법. 스스로를 통제하고 매트 위에서 수많은 실패와 성공을 마주하며 성장하는 위대한 취미, 주짓수의 매력을 직접 수련하고 설계해보세요.</span>
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="#dashboard" class="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold text-white transition-all transform hover:-translate-y-1 shadow-lg shadow-indigo-500/30 text-center">
+                    <i class="fa-solid fa-gamepad mr-2"></i><span data-i18n="hero.ctaDashboard">대시보드 체험하기</span>
+                </a>
+                <a href="#belts" class="w-full sm:w-auto px-8 py-4 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold transition-all text-center text-slate-800 dark:text-white shadow-sm">
+                    <span data-i18n="hero.ctaBelts">벨트 계보 보기</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 인터랙티브 벨트 여정 섹션 -->
+    <section id="belts" class="py-16 sm:py-24 border-t border-slate-200 dark:border-slate-900 bg-slate-50 dark:bg-slate-950/40 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight" data-i18n="belts.title">승급의 계보 (Belt System)</h2>
+                <p class="mt-4 text-base sm:text-lg text-slate-500 dark:text-slate-400" data-i18n="belts.description">
+                    성인 정규 승급 타임라인을 확인하세요. 모바일에서는 스와이프가 지원됩니다.
+                </p>
+            </div>
+
+            <!-- 가로 드래그 가능한 벨트 탭 영역 (터치 최적화) -->
+            <div class="flex gap-4 overflow-x-auto pb-6 no-scrollbar snap-x snap-mandatory px-2">
+                <button onclick="showBeltInfo('white')" class="snap-start shrink-0 min-w-[160px] belt-white p-4 rounded-2xl font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all flex flex-col gap-1 items-center justify-center border border-slate-300">
+                    <span class="text-xs uppercase opacity-80" data-i18n="belt.phase1">Phase 1</span>
+                    <span class="tracking-wide" data-i18n="belt.white">WHITE BELT</span>
+                </button>
+                <button onclick="showBeltInfo('blue')" class="snap-start shrink-0 min-w-[160px] belt-blue p-4 rounded-2xl font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all flex flex-col gap-1 items-center justify-center">
+                    <span class="text-xs uppercase opacity-80" data-i18n="belt.phase2">Phase 2</span>
+                    <span class="tracking-wide" data-i18n="belt.blue">BLUE BELT</span>
+                </button>
+                <button onclick="showBeltInfo('purple')" class="snap-start shrink-0 min-w-[160px] belt-purple p-4 rounded-2xl font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all flex flex-col gap-1 items-center justify-center">
+                    <span class="text-xs uppercase opacity-80" data-i18n="belt.phase3">Phase 3</span>
+                    <span class="tracking-wide" data-i18n="belt.purple">PURPLE BELT</span>
+                </button>
+                <button onclick="showBeltInfo('brown')" class="snap-start shrink-0 min-w-[160px] belt-brown p-4 rounded-2xl font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all flex flex-col gap-1 items-center justify-center">
+                    <span class="text-xs uppercase opacity-80" data-i18n="belt.phase4">Phase 4</span>
+                    <span class="tracking-wide" data-i18n="belt.brown">BROWN BELT</span>
+                </button>
+                <button onclick="showBeltInfo('black')" class="snap-start shrink-0 min-w-[160px] belt-black p-4 rounded-2xl font-black text-center shadow-lg hover:scale-105 active:scale-95 transition-all flex flex-col gap-1 items-center justify-center border-2 border-red-600">
+                    <span class="text-xs uppercase opacity-80" data-i18n="belt.mastery">Mastery</span>
+                    <span class="tracking-wide" data-i18n="belt.black">BLACK BELT</span>
+                </button>
+            </div>
+
+            <!-- 스크롤 인디케이터 (모바일용 가이드) -->
+            <div class="flex justify-center md:hidden items-center text-slate-400 gap-1 text-xs mb-8">
+                        <i class="fa-solid fa-arrows-left-right animate-pulse"></i> <span data-i18n="belts.swipeHint">스와이프하여 더 많은 벨트 보기</span>
+
+            <!-- 벨트 상세 카드 (누적연차 대폭 보완) -->
+            <div id="belt-detail-card" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 sm:p-10 transition-all duration-300 shadow-xl">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+                    <div class="lg:col-span-2 space-y-4">
+                        <span id="belt-badge" class="px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase inline-block bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200" data-i18n="belt.infoLabel">INFO</span>
+                        <h3 id="belt-title" class="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white" data-i18n="belt.initialTitle">벨트를 탭하여 시작 시점부터의 계보를 관찰하세요</h3>
+                        <p id="belt-desc" class="text-slate-600 dark:text-slate-400 text-base leading-relaxed" data-i18n="belt.initialDesc">각 등급에 도달하는 평균적인 시간 경과와 벨트가 상징하는 주짓수의 철학적 정체성을 체계적으로 파헤칩니다.</p>
+                    </div>
+                    
+                    <!-- 기간 이원화 박스 구성 -->
+                    <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col gap-4">
+                        <div>
+                            <span class="text-[11px] text-slate-400 dark:text-slate-500 uppercase block font-semibold tracking-wider" data-i18n="belt.cumulativeLabel">누적 수련 연차 (White 기준)</span>
+                            <span id="belt-duration-cumulative" class="text-2xl font-black text-indigo-500">-</span>
+                        </div>
+                        <div class="border-t border-slate-200 dark:border-slate-800 pt-3">
+                            <span class="text-[11px] text-slate-400 dark:text-slate-500 uppercase block font-semibold tracking-wider" data-i18n="belt.durationLabel">해당 벨트 평균 체류 기간</span>
+                            <span id="belt-duration-individual" class="text-base font-medium text-slate-700 dark:text-slate-300">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 주짓수 과학적 대표 기술 (디자인 완성도 심화) -->
+    <section id="techniques" class="py-16 sm:py-24 border-t border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight" data-i18n="techniques.title">지레와 물리학의 증명</h2>
+                <p class="mt-4 text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto" data-i18n="techniques.description">
+                    단순한 무력이 아니라, 각도와 축, 받침대를 사용하여 완성하는 인간 공학적 메커니즘을 시각적으로 학습합니다.
+                </p>
+            </div>
+
+            <!-- 기술 카드 리스트 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- 트라이앵글 초크 -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:scale-[1.03] hover:shadow-2xl hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center text-red-500 mb-6 border border-red-500/30">
+                            <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3" data-i18n="tech.triangle.title">트라이앵글 초크</h3>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6" data-i18n="tech.triangle.desc">
+                            하위 가드에서 상대의 경동맥을 다리로 압박하는 서브미션 기법. 혈류 통제를 바탕으로 안전한 무력화를 설계합니다.
+                        </p>
+                    </div>
+                    <button onclick="openModal('triangle')" class="w-full py-3 bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white text-slate-800 dark:text-slate-200 text-sm font-bold rounded-xl transition-all">
+                        <span data-i18n="tech.triangle.cta">메커니즘 분석</span> <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- 암바 -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:scale-[1.03] hover:shadow-2xl hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center text-amber-500 mb-6 border border-amber-500/30">
+                            <i class="fa-solid fa-anchor text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3" data-i18n="tech.armbar.title">암바 (Armbar)</h3>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6" data-i18n="tech.armbar.desc">
+                            지점(골반)과 받침대(허벅지), 그리고 상대 팔뚝의 말단을 통제하여 완성하는 전형적인 '제1종 지레' 기반 관절기.
+                        </p>
+                    </div>
+                    <button onclick="openModal('armbar')" class="w-full py-3 bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white text-slate-800 dark:text-slate-200 text-sm font-bold rounded-xl transition-all">
+                        <span data-i18n="tech.armbar.cta">메커니즘 분석</span> <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- 스윕 -->
+                <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800/80 rounded-3xl p-6 flex flex-col justify-between hover:scale-[1.03] hover:shadow-2xl hover:border-indigo-500/50 dark:hover:border-indigo-500/50 transition-all duration-300">
+                    <div>
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/30">
+                            <i class="fa-solid fa-repeat text-2xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3" data-i18n="tech.sweep.title">스윕 (Sweep)</h3>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-6" data-i18n="tech.sweep.desc">
+                            가드 포지션(누워 있으나 매우 능동적인 가드 및 공세가 설계된 포지션)에서 상대의 베이스를 빼앗고 무게중심을 뒤집는 정교한 전환술.
+                        </p>
+                    </div>
+                    <button onclick="openModal('sweep')" class="w-full py-3 bg-slate-200 dark:bg-slate-800/80 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white text-slate-800 dark:text-slate-200 text-sm font-bold rounded-xl transition-all">
+                        <span data-i18n="tech.sweep.cta">메커니즘 분석</span> <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 매트 위 안전 메뉴얼 & 도장 에티켓 섹션 추가 -->
+    <section id="etiquette" class="py-16 sm:py-24 border-t border-slate-200 dark:border-slate-900 bg-slate-50 dark:bg-slate-950/40 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight" data-i18n="etiquette.title">매트 위 안전 매뉴얼 & 에티켓</h2>
+                <p class="mt-4 text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto" data-i18n="etiquette.description">
+                    서로의 안전을 지키고 부상을 예방하는 것은 모든 기술 훈련보다 우선합니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- 탭 (Tap) 규칙 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg hover:-translate-y-1 transition-transform">
+                    <div class="w-12 h-12 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-hand text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2" data-i18n="etiquette.tap.title">탭(Tap)의 절대성</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed" data-i18n-html="etiquette.tap.desc">
+                        탭은 자존심 포기가 아닌 <b>기계적 파손(인대 파열, 골절 등)을 막는 물리적 차단 장치</b>입니다. 관절의 가동 범위(ROM) 한계에 도달하기 전, 상대의 몸이나 매트를 명확하게 두 번 이상 쳐서 항복 의사를 전달해야 합니다.
+                    </p>
+                </div>
+
+                <!-- 청결 유지 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg hover:-translate-y-1 transition-transform">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-soap text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2" data-i18n="etiquette.hygiene.title">위생과 피부 감염 예방</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed" data-i18n-html="etiquette.hygiene.desc">
+                        백선(Ringworm), 포도상구균 등 밀접 접촉 스포츠의 전염병을 막기 위해 <b>훈련 직후 즉각적인 도복 세탁</b>과 <b>손발톱 정리</b>는 필수입니다. 날카로운 손발톱은 상대방의 각막 찰과상과 피부 열상을 유발합니다.
+                    </p>
+                </div>
+
+                <!-- 이고(Ego) 통제 -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-lg hover:-translate-y-1 transition-transform">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-brain text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2" data-i18n="etiquette.ego.title">거친 힘(Ego)의 통제</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed" data-i18n-html="etiquette.ego.desc">
+                        감정을 실은 무리한 힘(Spazzy)은 예측 불가능한 역학 체인을 만들어 서로에게 치명적인 부상을 초래합니다. 물리적 완력이 아닌 <b>레버리지(지레)와 포지셔닝에 집중</b>하며 파트너의 안전을 배려해야 합니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 주짓수 게이미피케이션 통합 수련 대시보드 (LocalStorage 연동) -->
+    <section id="dashboard" class="py-16 sm:py-24 border-t border-slate-200 dark:border-slate-900 bg-slate-50 dark:bg-slate-950/20 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl sm:text-5xl font-extrabold tracking-tight" data-i18n="dashboard.title">수련 대시보드 (Playground)</h2>
+                <p class="mt-4 text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto" data-i18n="dashboard.description">
+                    기록을 작성하고 EXP를 모아 실시간으로 벨트를 레벨업 시키세요!
+                </p>
+            </div>
+
+            <!-- 대시보드 메인 레이아웃 (Grid) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- 입력 양식 컬럼 (5 Span) -->
+                <div class="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+                    <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-plus text-indigo-500"></i> <span data-i18n="dashboard.logFormTitle">오늘의 수련 일지 작성</span>
+                    </h3>
+                    
+                    <form id="log-form" onsubmit="addTrainingLog(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2" data-i18n="dashboard.labelDate">훈련일자</label>
+                            <input type="date" id="log-date" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 uppercase mb-2" data-i18n="dashboard.labelTech">훈련 기술</label>
+                                <input type="text" id="log-tech" placeholder="예: 시저스 스윕" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" data-i18n-placeholder="dashboard.placeholderTech">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-400 uppercase mb-2" data-i18n="dashboard.labelRounds">스파링 라운드</label>
+                                <input type="number" id="log-rounds" min="0" max="20" placeholder="Rounds" required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" data-i18n-placeholder="dashboard.placeholderRounds">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2" data-i18n="dashboard.labelRpe">훈련 강도 (RPE)</label>
+                            <div class="flex items-center gap-3">
+                                <input type="range" id="log-rpe" min="1" max="10" value="5" class="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                                <span id="rpe-val" class="font-bold text-sm bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-lg">RPE 5</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 uppercase mb-2" data-i18n="dashboard.labelFeedback">세부 피드백</label>
+                            <textarea id="log-feedback" rows="3" placeholder="오늘 스파링에서 막혔거나 얻은 팁을 작성하세요." required class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none" data-i18n-placeholder="dashboard.placeholderFeedback"></textarea>
+                        </div>
+                        <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-bold transition-all transform active:scale-95 shadow-md shadow-indigo-500/20">
+                            <span data-i18n="dashboard.logButton">기록 생성 & 경험치 지급!</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 실시간 게이미피케이션 상태 컬럼 (7 Span) -->
+                <div class="lg:col-span-7 flex flex-col gap-6">
+                    <!-- 유저 정보 & 벨트 승급 바 -->
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 class="text-xs text-slate-400 uppercase font-bold tracking-wider" data-i18n="dashboard.progressTitle">나의 등급 진행도</h4>
+                                <span id="current-user-belt" class="text-2xl font-black text-indigo-500 mt-1 inline-block">화이트 벨트 (White Belt)</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block font-bold" data-i18n="dashboard.expLabel">누적 경험치</span>
+                                <span id="user-total-exp" class="text-xl font-extrabold text-slate-900 dark:text-white">120 EXP</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 승급 게이지 레벨 바 -->
+                        <div class="space-y-2">
+                            <div class="w-full h-4 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-200 dark:border-slate-800">
+                                <div id="exp-bar-fill" class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" style="width: 24%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-400">
+                                <span id="current-belt-milestone">0 EXP</span>
+                                <span id="next-belt-milestone">500 EXP (블루 벨트 목표)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 훈장 뱃지 보관함 (게이미피케이션 최적화) -->
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-medal text-amber-500"></i> <span data-i18n="dashboard.badgeTitle">주짓수 뱃지 업적 보관함</span>
+                        </h4>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div id="badge-step-1" class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 opacity-30 transition-all duration-300">
+                                <i class="fa-solid fa-baby-carriage text-2xl text-indigo-400 mb-2"></i>
+                                <span class="text-[10px] font-bold text-center">첫 걸음</span>
+                            </div>
+                            <div id="badge-rolling" class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 opacity-30 transition-all duration-300">
+                                <i class="fa-solid fa-wind text-2xl text-cyan-400 mb-2"></i>
+                                <span class="text-[10px] font-bold text-center">롤링 머신</span>
+                            </div>
+                            <div id="badge-iron" class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 opacity-30 transition-all duration-300">
+                                <i class="fa-solid fa-brain text-2xl text-pink-400 mb-2"></i>
+                                <span class="text-[10px] font-bold text-center">이성적 무술</span>
+                            </div>
+                            <div id="badge-expert" class="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 opacity-30 transition-all duration-300">
+                                <i class="fa-solid fa-award text-2xl text-yellow-400 mb-2"></i>
+                                <span class="text-[10px] font-bold text-center">프로 롤러</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 하단 기록 디테일 뷰 테이블 (Responsive & Persistent) -->
+            <div class="mt-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                    <h3 class="text-xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-database text-purple-500"></i> <span data-i18n="dashboard.logDatabaseTitle">기록 데이터베이스 로그</span>
+                    </h3>
+                    <span id="log-count" class="bg-indigo-100 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 px-4 py-1.5 rounded-full text-xs font-semibold" data-i18n="dashboard.logCount">총 0개 세션 수련 완료</span>
+                </div>
+
+                <div id="log-list" class="space-y-4 max-h-[400px] overflow-y-auto pr-2 no-scrollbar">
+                    <!-- 수련로그 동적 랜더링 영역 -->
+                    <p id="empty-placeholder" class="text-center py-12 text-slate-400 text-sm" data-i18n="dashboard.emptyPlaceholder">기록이 비어 있습니다. 위 폼을 통해 오늘의 스파링 세션을 추가하세요.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 플레이 스타일 성향 테스트 섹션 (심화 UX 디자인 변경) -->
+    <section id="style-quiz" class="py-16 sm:py-24 border-t border-slate-200 dark:border-slate-900 bg-white dark:bg-slate-900 transition-colors">
+        <div class="max-w-xl mx-auto px-4 reveal">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl font-extrabold tracking-tight" data-i18n="styleQuiz.title">주짓수 전술 성향 진단</h2>
+                <p class="mt-3 text-slate-500 dark:text-slate-400" data-i18n="styleQuiz.description">당신의 매트 행동 특징을 판별합니다.</p>
+            </div>
+            
+            <div class="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 text-center shadow-xl">
+                <!-- 퀴즈 단계 상태 바 -->
+                <div class="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full mb-8 overflow-hidden">
+                    <div id="quiz-progress-bar" class="bg-indigo-500 h-full w-33 transition-all duration-300"></div>
+                </div>
+
+                <div id="quiz-question-container">
+                    <span id="quiz-step-count" class="text-xs font-bold text-indigo-500 uppercase tracking-widest block mb-2" data-i18n="quiz.questionStep">Question 1 of 3</span>
+                    <p class="text-xl font-bold text-slate-900 dark:text-white mb-8 leading-snug" id="quiz-question">스파링을 시작할 때, 가장 안정감 있는 스타팅 상태는?</p>
+                    <div class="space-y-4" id="quiz-options">
+                        <!-- 동적으로 갱신되는 멀티 문항 옵션 -->
+                    </div>
+                </div>
+
+                <div id="quiz-result" class="hidden space-y-6">
+                    <div class="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto text-indigo-500 text-3xl">
+                        <i class="fa-solid fa-chess"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-black text-indigo-400 mb-3" id="result-title">당신의 분석 스타일</h3>
+                        <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed" id="result-desc"></p>
+                    </div>
+                    <button onclick="resetQuiz()" class="px-6 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white text-slate-800 dark:text-slate-200 font-bold rounded-xl transition-all w-full">
+                        <span data-i18n="quiz.resetButton">테스트 다시 도전하기</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 주짓수 전문 기하학 메커니즘 모달 -->
+    <div id="tech-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm hidden" onclick="closeModalOnOuterClick(event)">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl transition-all scale-95 duration-200" id="modal-content" onclick="event.stopPropagation()">
+            <!-- 헤더 -->
+            <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 id="modal-title" class="text-xl font-bold text-slate-900 dark:text-white" data-i18n="modal.title">과학적 기술 원리</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <!-- 콘텐트 본문 -->
+            <div class="p-6 space-y-5">
+                <div>
+                    <h4 class="text-xs font-bold text-indigo-500 uppercase tracking-wider mb-2" data-i18n="modal.mechanicsTitle">물리 역학 및 베이스 차단 (Leverage)</h4>
+                    <p id="modal-mechanics" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed"></p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-950 p-5 rounded-2xl border border-slate-150 dark:border-slate-800/60">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2" data-i18n="modal.defenseTitle">경로 카운터 및 대응 전술</h4>
+                    <p id="modal-defense" class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"></p>
+                </div>
+            </div>
+            <!-- 모달 하단 푸터 -->
+            <div class="p-4 bg-slate-50 dark:bg-slate-950/40 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+                <button onclick="closeModal()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold transition-all">
+                    <span data-i18n="modal.closeButton">분석 완료</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 라이선스 & 소스 정보 -->
+    <footer class="bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-900 py-16 text-center text-xs text-slate-500 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 space-y-4">
+            <div class="flex justify-center gap-6 text-lg mb-4">
+                <a href="#" class="hover:text-indigo-500 transition-colors" aria-label="GitHub"><i class="fa-brands fa-github"></i></a>
+                <a href="#" class="hover:text-indigo-500 transition-colors" aria-label="Discord"><i class="fa-brands fa-discord"></i></a>
+                <a href="#" class="hover:text-indigo-500 transition-colors" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+            </div>
+            <p data-i18n="footer.copy">© 2026 I AM JIU-JITSU. All rights reserved.</p>
+            <p data-i18n="footer.meta">Git v2.4.0-stable | HTML5 LocalStorage & CSS3 Tailwind Engine</p>
+        </div>
+    </footer>
+
+    <script>
+        /* ==================== 0. 애니메이션: 파티클 생성 & 타이핑 효과 ==================== */
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 20;
+            
+            for(let i=0; i<particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'absolute rounded-full bg-indigo-500/20';
+                
+                // 랜덤 크기, 위치, 애니메이션 딜레이 설정
+                const size = Math.random() * 8 + 4;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${Math.random() * 100}%`;
+                particle.style.animation = `floatUp ${Math.random() * 5 + 5}s linear infinite`;
+                particle.style.animationDelay = `${Math.random() * 5}s`;
+                
+                container.appendChild(particle);
+            }
+        }
+
+        function typeWriterEffect() {
+            const textToType = "격투 과학의 정수,\n주짓수에 중독되다";
+            const typedTextElement = document.getElementById('typed-text');
+            let index = 0;
+
+            function type() {
+                if (index < textToType.length) {
+                    if (textToType.charAt(index) === '\n') {
+                        typedTextElement.innerHTML += '<br class="hidden sm:inline">';
+                    } else {
+                        typedTextElement.innerHTML += textToType.charAt(index);
+                    }
+                    index++;
+                    setTimeout(type, 100); // 타이핑 속도 조절
+                }
+            }
+            type();
+        }
+
+        /* ==================== 1. 테마 스위처 로직 ==================== */
+        
+        const htmlEl = document.documentElement;
+
+        // 에러 방지용 try-catch 래퍼
+        function getTheme() {
+            try { return localStorage.getItem('theme'); } catch(e) { return null; }
+        }
+        function setTheme(val) {
+            try { localStorage.setItem('theme', val); } catch(e) {}
+        }
+
+        // 언어 로컬스토리지 접근
+        function getLanguage() {
+            try { return localStorage.getItem('site-language') || 'ko'; } catch(e) { return 'ko'; }
+        }
+        function setLanguage(lang) {
+            try { localStorage.setItem('site-language', lang); } catch(e) {}
+        }
+
+        let currentLanguage = 'ko';
+        let currentSelectedBelt = 'white';
+        let currentOpenTech = null;
+        let heroTypingTimer = null;
+        let heroTypingVersion = 0;
+
+        const translations = {
+            ko: {
+                title: 'I AM JIU-JITSU | 주짓수 게이미피케이션 플랫폼',
+                hero: {
+                    tagline: '지레와 기하학이 융합된 인간 체스',
+                    description: '물리적 근력 차이를 극복하는 완벽한 레버리지 기법. 스스로를 통제하고 매트 위에서 수많은 실패와 성공을 마주하며 성장하는 위대한 취미, 주짓수의 매력을 직접 수련하고 설계해보세요.',
+                    ctaDashboard: '대시보드 체험하기',
+                    ctaBelts: '벨트 계보 보기'
+                },
+                nav: {
+                    philosophy: '철학',
+                    belts: '벨트 여정',
+                    techniques: '대표 기술',
+                    etiquette: '안전 매뉴얼',
+                    dashboard: '수련 대시보드',
+                    styleQuiz: '스타일 테스트'
+                },
+                belts: {
+                    title: '승급의 계보 (Belt System)',
+                    description: '성인 정규 승급 타임라인을 확인하세요. 모바일에서는 스와이프가 지원됩니다.',
+                    swipeHint: '스와이프하여 더 많은 벨트 보기'
+                },
+                belt: {
+                    phase1: 'Phase 1',
+                    phase2: 'Phase 2',
+                    phase3: 'Phase 3',
+                    phase4: 'Phase 4',
+                    mastery: 'Mastery',
+                    white: 'WHITE BELT',
+                    blue: 'BLUE BELT',
+                    purple: 'PURPLE BELT',
+                    brown: 'BROWN BELT',
+                    black: 'BLACK BELT',
+                    infoLabel: 'INFO',
+                    initialTitle: '벨트를 탭하여 시작 시점부터의 계보를 관찰하세요',
+                    initialDesc: '각 등급에 도달하는 평균적인 시간 경과와 벨트가 상징하는 주짓수의 철학적 정체성을 체계적으로 파헤칩니다.',
+                    cumulativeLabel: '누적 수련 연차 (White 기준)',
+                    durationLabel: '해당 벨트 평균 체류 기간'
+                },
+                techniques: {
+                    title: '지레와 물리학의 증명',
+                    description: '단순한 무력이 아니라, 각도와 축, 받침대를 사용하여 완성하는 인간 공학적 메커니즘을 시각적으로 학습합니다.',
+                    triangle: {
+                        title: '트라이앵글 초크',
+                        desc: '하위 가드에서 상대의 경동맥을 다리로 압박하는 서브미션 기법. 혈류 통제를 바탕으로 안전한 무력화를 설계합니다.',
+                        cta: '메커니즘 분석'
+                    },
+                    armbar: {
+                        title: '암바 (Armbar)',
+                        desc: '지점(골반)과 받침대(허벅지), 그리고 상대 팔뚝의 말단을 통제하여 완성하는 전형적인 \'제1종 지레\' 기반 관절기.',
+                        cta: '메커니즘 분석'
+                    },
+                    sweep: {
+                        title: '스윕 (Sweep)',
+                        desc: '가드 포지션(누워 있으나 매우 능동적인 가드 및 공세가 설계된 포지션)에서 상대의 베이스를 빼앗고 무게중심을 뒤집는 정교한 전환술.',
+                        cta: '메커니즘 분석'
+                    }
+                },
+                tech: {
+                    title: '지레와 물리학의 증명',
+                    description: '단순한 무력이 아니라, 각도와 축, 받침대를 사용하여 완성하는 인간 공학적 메커니즘을 시각적으로 학습합니다.',
+                    triangle: {
+                        title: '트라이앵글 초크',
+                        desc: '하위 가드에서 상대의 경동맥을 다리로 압박하는 서브미션 기법. 혈류 통제를 바탕으로 안전한 무력화를 설계합니다.',
+                        cta: '메커니즘 분석'
+                    },
+                    armbar: {
+                        title: '암바 (Armbar)',
+                        desc: '지점(골반)과 받침대(허벅지), 그리고 상대 팔뚝의 말단을 통제하여 완성하는 전형적인 \'제1종 지레\' 기반 관절기.',
+                        cta: '메커니즘 분석'
+                    },
+                    sweep: {
+                        title: '스윕 (Sweep)',
+                        desc: '가드 포지션(누워 있으나 매우 능동적인 가드 및 공세가 설계된 포지션)에서 상대의 베이스를 빼앗고 무게중심을 뒤집는 정교한 전환술.',
+                        cta: '메커니즘 분석'
+                    }
+                },
+                etiquette: {
+                    title: '매트 위 안전 매뉴얼 & 에티켓',
+                    description: '서로의 안전을 지키고 부상을 예방하는 것은 모든 기술 훈련보다 우선합니다.',
+                    tap: {
+                        title: '탭(Tap)의 절대성',
+                        desc: '탭은 자존심 포기가 아닌 <b>기계적 파손(인대 파열, 골절 등)을 막는 물리적 차단 장치</b>입니다. 관절의 가동 범위(ROM) 한계에 도달하기 전, 상대의 몸이나 매트를 명확하게 두 번 이상 쳐서 항복 의사를 전달해야 합니다.'
+                    },
+                    hygiene: {
+                        title: '위생과 피부 감염 예방',
+                        desc: '백선(Ringworm), 포도상구균 등 밀접 접촉 스포츠의 전염병을 막기 위해 <b>훈련 직후 즉각적인 도복 세탁</b>과 <b>손발톱 정리</b>는 필수입니다. 날카로운 손발톱은 상대방의 각막 찰과상과 피부 열상을 유발합니다.'
+                    },
+                    ego: {
+                        title: '거친 힘(Ego)의 통제',
+                        desc: '감정을 실은 무리한 힘(Spazzy)은 예측 불가능한 역학 체인을 만들어 서로에게 치명적인 부상을 초래합니다. 물리적 완력이 아닌 <b>레버리지(지레)와 포지셔닝에 집중</b>하며 파트너의 안전을 배려해야 합니다.'
+                    }
+                },
+                dashboard: {
+                    title: '수련 대시보드 (Playground)',
+                    description: '기록을 작성하고 EXP를 모아 실시간으로 벨트를 레벨업 시키세요!',
+                    logFormTitle: '오늘의 수련 일지 작성',
+                    labelDate: '훈련일자',
+                    labelTech: '훈련 기술',
+                    placeholderTech: '예: 시저스 스윕',
+                    labelRounds: '스파링 라운드',
+                    placeholderRounds: 'Rounds',
+                    labelRpe: '훈련 강도 (RPE)',
+                    rpeShort: 'RPE {value}',
+                    labelFeedback: '세부 피드백',
+                    placeholderFeedback: '오늘 스파링에서 막혔거나 얻은 팁을 작성하세요.',
+                    logButton: '기록 생성 & 경험치 지급!',
+                    progressTitle: '나의 등급 진행도',
+                    expLabel: '누적 경험치',
+                    badgeTitle: '주짓수 뱃지 업적 보관함',
+                    badgeStep1: '첫 걸음',
+                    badgeRolling: '롤링 머신',
+                    badgeIron: '이성적 무술',
+                    badgeExpert: '프로 롤러',
+                    logDatabaseTitle: '기록 데이터베이스 로그',
+                    logCount: '총 {count}개 세션 수련 완료',
+                    emptyPlaceholder: '기록이 비어 있습니다. 위 폼을 통해 오늘의 스파링 세션을 추가하세요.',
+                    deleteLog: '기록 삭제',
+                    roundsShort: '{count} R',
+                    beltName: {
+                        white: '화이트 벨트 (White Belt)',
+                        blue: '블루 벨트 (Blue Belt)',
+                        purple: '퍼플 벨트 (Purple Belt)',
+                        brown: '브라운 벨트 (Brown Belt)',
+                        black: '블랙 벨트 (Black Belt) ★'
+                    },
+                    beltNext: {
+                        blue: '500 EXP (블루 벨트 목표)',
+                        purple: '1000 EXP (퍼플 벨트 목표)',
+                        brown: '1500 EXP (브라운 벨트 목표)',
+                        black: '2000 EXP (블랙 벨트 목표)',
+                        mastery: '마스터 등급 도달!'
+                    }
+                },
+                styleQuiz: {
+                    title: '주짓수 전술 성향 진단',
+                    description: '당신의 매트 행동 특징을 판별합니다.'
+                },
+                theme: {
+                    toggle: '테마 변경'
+                },
+                quiz: {
+                    questionStep: '문제 {current} / {total}',
+                    resetButton: '테스트 다시 도전하기',
+                    results: {
+                        guard: {
+                            title: '가드 플레이어 (Guard Player)',
+                            desc: '당신은 중력을 나에게 유용하게 분배하고, 상대를 거미줄처럼 다리로 감싸 침몰시키는 똑똑한 가드 플레이어입니다! 델라히바, 클로즈가드를 활용해 빈틈을 파고들어 스윕이나 하부 삼각초크를 노리는 성향입니다.'
+                        },
+                        pass: {
+                            title: '가드 패서 (Guard Passer / Top Leader)',
+                            desc: '당신은 가드를 분쇄하고, 체중의 수직 힘을 지레로 승화해 상대를 지면으로 제압하는 강력한 탑 포지션 압박 패서입니다! 기동력을 이용한 토레안도 패스, 묵직한 하프가드 패스를 선호합니다.'
+                        }
+                    }
+                },
+                modal: {
+                    title: '과학적 기술 원리',
+                    mechanicsTitle: '물리 역학 및 베이스 차단 (Leverage)',
+                    defenseTitle: '경로 카운터 및 대응 전술',
+                    closeButton: '분석 완료'
+                },
+                footer: {
+                    copy: '© 2026 I AM JIU-JITSU. All rights reserved.',
+                    meta: 'Git v2.4.0-stable | HTML5 LocalStorage & CSS3 Tailwind Engine'
+                }
+            },
+            en: {
+                title: 'I AM JIU-JITSU | Jiu-Jitsu Gamification Platform',
+                hero: {
+                    tagline: 'Human chess forged by leverage and geometry',
+                    description: 'Overcome raw strength differences with perfect leverage techniques. Control yourself, embrace failures and triumphs on the mat, and design your own jiu-jitsu journey.',
+                    ctaDashboard: 'Try the Dashboard',
+                    ctaBelts: 'View Belt Progression'
+                },
+                nav: {
+                    philosophy: 'Philosophy',
+                    belts: 'Belt Journey',
+                    techniques: 'Key Techniques',
+                    etiquette: 'Safety Manual',
+                    dashboard: 'Training Dashboard',
+                    styleQuiz: 'Style Quiz'
+                },
+                belts: {
+                    title: 'Belt Progression (Belt System)',
+                    description: 'Explore the standard adult promotion timeline. Swipe support is available on mobile.',
+                    swipeHint: 'Swipe to reveal more belts'
+                },
+                belt: {
+                    phase1: 'Phase 1',
+                    phase2: 'Phase 2',
+                    phase3: 'Phase 3',
+                    phase4: 'Phase 4',
+                    mastery: 'Mastery',
+                    white: 'WHITE BELT',
+                    blue: 'BLUE BELT',
+                    purple: 'PURPLE BELT',
+                    brown: 'BROWN BELT',
+                    black: 'BLACK BELT',
+                    infoLabel: 'INFO',
+                    initialTitle: 'Tap a belt to discover its lineage from the beginning.',
+                    initialDesc: 'Explore the average timing to reach each rank and the philosophical meaning that each belt symbolizes in jiu-jitsu.',
+                    cumulativeLabel: 'Accumulated training years (from White)',
+                    durationLabel: 'Average time spent at this belt'
+                },
+                techniques: {
+                    title: 'Proof of leverage and physics',
+                    description: 'Learn human-engineered mechanisms visually using angles, axes, and fulcrums rather than brute force.',
+                    triangle: {
+                        title: 'Triangle Choke',
+                        desc: 'A submission that uses the legs to compress the opponent’s carotid artery from a bottom guard position. It is engineered to safely neutralize blood flow.',
+                        cta: 'Analyze the mechanics'
+                    },
+                    armbar: {
+                        title: 'Armbar',
+                        desc: 'A classic first-class lever joint lock where the hands act as force, the hips as fulcrum, and the opponent’s arm is extended past its safe angle.',
+                        cta: 'Analyze the mechanics'
+                    },
+                    sweep: {
+                        title: 'Sweep',
+                        desc: 'An advanced transition that destabilizes the opponent’s base from guard, removes support, and reverses their center of mass to topple them.',
+                        cta: 'Analyze the mechanics'
+                    }
+                },
+                tech: {
+                    title: 'Proof of leverage and physics',
+                    description: 'Learn human-engineered mechanisms visually using angles, axes, and fulcrums rather than brute force.',
+                    triangle: {
+                        title: 'Triangle Choke',
+                        desc: 'A submission that uses the legs to compress the opponent’s carotid artery from a bottom guard position. It is engineered to safely neutralize blood flow.',
+                        cta: 'Analyze the mechanics'
+                    },
+                    armbar: {
+                        title: 'Armbar',
+                        desc: 'A classic first-class lever joint lock where the hands act as force, the hips as fulcrum, and the opponent’s arm is extended past its safe angle.',
+                        cta: 'Analyze the mechanics'
+                    },
+                    sweep: {
+                        title: 'Sweep',
+                        desc: 'An advanced transition that destabilizes the opponent’s base from guard, removes support, and reverses their center of mass to topple them.',
+                        cta: 'Analyze the mechanics'
+                    }
+                },
+                etiquette: {
+                    title: 'Mat Safety Manual & Etiquette',
+                    description: 'Keeping each other safe and preventing injuries comes before any technical training.',
+                    tap: {
+                        title: 'The absoluteness of tap',
+                        desc: 'Tapping is not surrendering pride; it is a mechanical safety stop that prevents damage like ligament tears and fractures. Tap clearly at least twice before the joint reaches its limit.'
+                    },
+                    hygiene: {
+                        title: 'Hygiene and infection prevention',
+                        desc: 'To prevent infections like ringworm and staph, wash your gi immediately after training and keep nails trimmed. Sharp nails can scratch eyes and skin.'
+                    },
+                    ego: {
+                        title: 'Control of force and ego',
+                        desc: 'Spazzy, uncontrolled strength creates unpredictable chains of force and can injure training partners. Focus on leverage and positioning, not raw power.'
+                    }
+                },
+                dashboard: {
+                    title: 'Training Dashboard (Playground)',
+                    description: 'Log sessions and earn EXP to level up your belt in real time.',
+                    logFormTitle: 'Write today’s training log',
+                    labelDate: 'Training Date',
+                    labelTech: 'Technique',
+                    placeholderTech: 'Ex: Scissor Sweep',
+                    labelRounds: 'Sparring Rounds',
+                    placeholderRounds: 'Rounds',
+                    labelRpe: 'Training Intensity (RPE)',
+                    rpeShort: 'RPE {value}',
+                    labelFeedback: 'Detailed Feedback',
+                    placeholderFeedback: 'Write what blocked you or what you learned in today’s sparring.',
+                    logButton: 'Create Log & Earn EXP!',
+                    progressTitle: 'Progress to the next rank',
+                    expLabel: 'Total EXP',
+                    badgeTitle: 'Jiu-Jitsu Badge Achievements',
+                    badgeStep1: 'First Step',
+                    badgeRolling: 'Rolling Machine',
+                    badgeIron: 'Calculated Combat',
+                    badgeExpert: 'Pro Roller',
+                    logDatabaseTitle: 'Training Database Logs',
+                    logCount: '{count} sessions completed',
+                    emptyPlaceholder: 'No logs yet. Add today’s sparring session using the form above.',
+                    deleteLog: 'Delete log',
+                    roundsShort: '{count} R',
+                    beltName: {
+                        white: 'White Belt',
+                        blue: 'Blue Belt',
+                        purple: 'Purple Belt',
+                        brown: 'Brown Belt',
+                        black: 'Black Belt ★'
+                    },
+                    beltNext: {
+                        blue: '500 EXP (Blue Belt goal)',
+                        purple: '1000 EXP (Purple Belt goal)',
+                        brown: '1500 EXP (Brown Belt goal)',
+                        black: '2000 EXP (Black Belt goal)',
+                        mastery: 'Master level reached!'
+                    }
+                },
+                styleQuiz: {
+                    title: 'Jiu-Jitsu Tactical Style Assessment',
+                    description: 'Discover your mat behavior profile.'
+                },
+                theme: {
+                    toggle: 'Toggle theme'
+                },
+                quiz: {
+                    questionStep: 'Question {current} of {total}',
+                    resetButton: 'Retake the test',
+                    results: {
+                        guard: {
+                            title: 'Guard Player',
+                            desc: 'You distribute gravity to your advantage, wrapping your opponent like a web and forcing them to sink. You favor sweeps and lower-body submissions such as triangles from guard.'
+                        },
+                        pass: {
+                            title: 'Guard Passer / Top Leader',
+                            desc: 'You smash guard with vertical force, using leverage to pressure your opponent to the mat. You prefer powerful top pressure and dynamic passing systems.'
+                        }
+                    }
+                },
+                modal: {
+                    title: 'Scientific technique principles',
+                    mechanicsTitle: 'Physics and base control (Leverage)',
+                    defenseTitle: 'Counter paths and response tactics',
+                    closeButton: 'Close analysis'
+                },
+                footer: {
+                    copy: '© 2026 I AM JIU-JITSU. All rights reserved.',
+                    meta: 'Git v2.4.0-stable | HTML5 LocalStorage & CSS3 Tailwind Engine'
+                }
+            }
+        };
+
+        function getTranslation(lang, key) {
+            return key.split('.').reduce((obj, part) => obj && obj[part], translations[lang] || {});
+        }
+
+        function applyTranslations(lang) {
+            currentLanguage = lang;
+            document.documentElement.lang = lang;
+            document.title = getTranslation(lang, 'title') || document.title;
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.dataset.i18n;
+                const text = getTranslation(lang, key);
+                if (text == null) return;
+                el.textContent = text;
+            });
+
+            document.querySelectorAll('[data-i18n-html]').forEach(el => {
+                const key = el.dataset.i18nHtml;
+                const html = getTranslation(lang, key);
+                if (html == null) return;
+                el.innerHTML = html;
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.dataset.i18nPlaceholder;
+                const placeholder = getTranslation(lang, key);
+                if (placeholder == null) return;
+                el.setAttribute('placeholder', placeholder);
+            });
+
+            const languageButton = document.getElementById('language-toggle');
+            if (languageButton) {
+                languageButton.textContent = lang === 'ko' ? 'EN' : 'KR';
+                languageButton.setAttribute('aria-label', lang === 'ko' ? 'Switch to English' : '한국어로 전환');
+            }
+
+            const themeButton = document.getElementById('theme-toggle');
+            if (themeButton) {
+                const themeLabel = getTranslation(lang, 'theme.toggle');
+                if (themeLabel) {
+                    themeButton.setAttribute('aria-label', themeLabel);
+                }
+            }
+
+            if (currentSelectedBelt) {
+                showBeltInfo(currentSelectedBelt);
+            }
+
+            updateDashboard();
+            renderLogsList();
+            renderQuiz();
+            updateRpeText(document.getElementById('log-rpe')?.value || 5);
+            updateModalContent();
+
+            const resultBox = document.getElementById('quiz-result');
+            if (resultBox && !resultBox.classList.contains('hidden')) {
+                showQuizResult();
+            }
+        }
+
+        function initLanguage() {
+            const lang = getLanguage();
+            currentLanguage = lang;
+            applyTranslations(lang);
+            startHeroTyping(lang);
+        }
+
+        function toggleLanguage() {
+            const nextLang = getLanguage() === 'ko' ? 'en' : 'ko';
+            setLanguage(nextLang);
+            applyTranslations(nextLang);
+            startHeroTyping(nextLang);
+        }
+
+        function startHeroTyping(lang) {
+            const typedTextElement = document.getElementById('typed-text');
+            if (!typedTextElement) return;
+
+            if (heroTypingTimer) {
+                clearTimeout(heroTypingTimer);
+                heroTypingTimer = null;
+            }
+
+            heroTypingVersion += 1;
+            const currentVersion = heroTypingVersion;
+            typedTextElement.textContent = '';
+            const heroText = getTranslation(lang, 'hero.tagline') || 'I AM JIU-JITSU';
+            let index = 0;
+
+            function type() {
+                if (currentVersion !== heroTypingVersion) return;
+                if (index < heroText.length) {
+                    typedTextElement.textContent += heroText.charAt(index);
+                    index++;
+                    heroTypingTimer = setTimeout(type, 60);
+                } else {
+                    heroTypingTimer = null;
+                }
+            }
+
+            type();
+        }
+
+        function updateRpeText(value) {
+            const template = getTranslation(currentLanguage, 'dashboard.rpeShort') || 'RPE {value}';
+            const label = document.getElementById('rpe-val');
+            if (label) {
+                label.textContent = template.replace('{value}', value);
+            }
+        }
+
+        function updateModalContent() {
+            if (!currentOpenTech) return;
+            const data = techData[currentLanguage] && techData[currentLanguage][currentOpenTech];
+            if (!data) return;
+            document.getElementById('modal-title').textContent = data.title;
+            document.getElementById('modal-mechanics').textContent = data.mechanics;
+            document.getElementById('modal-defense').textContent = data.defense;
+        }
+
+        // 초기 테마 로드
+        const initialIcon = document.getElementById('theme-icon');
+        if (getTheme() === 'light') {
+            htmlEl.classList.remove('dark');
+            if(initialIcon) initialIcon.className = 'fa-solid fa-sun';
+        } else {
+            htmlEl.classList.add('dark');
+            if(initialIcon) initialIcon.className = 'fa-solid fa-moon';
+        }
+
+        function toggleTheme() {
+            const icon = document.getElementById('theme-icon');
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                if(icon) icon.className = 'fa-solid fa-sun';
+                setTheme('light');
+            } else {
+                htmlEl.classList.add('dark');
+                if(icon) icon.className = 'fa-solid fa-moon';
+                setTheme('dark');
+            }
+        }
+
+        /* ==================== 2. 스크롤 위치 감지 인디케이터 ==================== */
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('scroll-progress').style.width = scrolled + '%';
+
+            // AOS 감지
+            revealElements();
+        });
+
+        // 모바일 메뉴 토글 전역 함수
+        window.toggleMobileMenu = function() {
+            const mobileMenu = document.getElementById('mobile-menu');
+            if(mobileMenu) mobileMenu.classList.toggle('hidden');
+        };
+
+        // 애니메이션 트리거
+        function revealElements() {
+            const reveals = document.querySelectorAll('.reveal');
+            reveals.forEach(el => {
+                const windowHeight = window.innerHeight;
+                const elementTop = el.getBoundingClientRect().top;
+                const elementVisible = 120;
+                if (elementTop < windowHeight - elementVisible) {
+                    el.classList.add('active');
+                }
+            });
+        }
+
+        /* ==================== 3. 벨트 데이터 셋 (누적수련연차 + 단독 체류) ==================== */
+        const beltData = {
+            ko: {
+                white: {
+                    title: "화이트 벨트 (White Belt) - 생존의 시작",
+                    badge: "입문자 (Novice)",
+                    desc: "기본적인 가드 구성(Framing)과 생존 탈출(Escape)에 모든 물리력을 집중하는 기초 훈련 단계입니다. 매트 위 환경의 중력과 기저면 조절을 학습합니다.",
+                    cumulative: "입문 즉시 ~ 평균 2년차까지",
+                    individual: "1.5년 ~ 2년 소요"
+                },
+                blue: {
+                    title: "블루 벨트 (Blue Belt) - 본격적 탐구",
+                    badge: "초급 실력가 (Advanced Beginner)",
+                    desc: "공격 서브미션 가드 체계와 패스 전술의 틀을 완성하는 단계로, IBJJF(국제주짓수연맹) 규정상 최소 만 2년의 보류 기간을 두어야 할 정도로 중요합니다.",
+                    cumulative: "총합 약 2년 ~ 5년차 영역",
+                    individual: "평균 2년 ~ 3년 소요"
+                },
+                purple: {
+                    title: "퍼플 벨트 (Purple Belt) - 나만의 스타일 완성",
+                    badge: "중급 지도자 (Intermediate)",
+                    desc: "자신만의 고유 전술(Game Plan)이 뚜렷해지고 하부 포지션에서 완벽한 방패를 형성합니다. 다른 학생을 지도하는 어시스턴트 역할을 소화합니다.",
+                    cumulative: "총합 약 4년 ~ 8년차 영역",
+                    individual: "평균 2년 ~ 3년 소요"
+                },
+                brown: {
+                    title: "브라운 벨트 (Brown Belt) - 정교한 매듭",
+                    badge: "상급 마스터 (Advanced)",
+                    desc: "상대의 빈틈을 한 박자 빠르게 파고들며 역학적으로 완벽한 효율을 만듭니다. 기술적 무결성을 추구하는 최종 직전 승급 관문입니다.",
+                    cumulative: "총합 약 6년 ~ 10년차 영역",
+                    individual: "평균 1.5년 ~ 2년 소요"
+                },
+                black: {
+                    title: "블랙 벨트 (Black Belt) - 도의 시작",
+                    badge: "그랜드 스페셜리스트 (Master)",
+                    desc: "이론과 실기, 신체 전반의 레버리지를 완전히 신체화한 단계입니다. 완성의 정착이 아닌 학문으로써의 심도 있는 학습의 기점입니다.",
+                    cumulative: "총합 최소 10년 이상의 헌신",
+                    individual: "최소 10년 이상의 누적 수행"
+                }
+            },
+            en: {
+                white: {
+                    title: "White Belt - The Beginning of Survival",
+                    badge: "Novice",
+                    desc: "The foundational training stage focuses physical effort on basic guard framing and survival escapes. Learn gravity and base control on the mat.",
+                    cumulative: "From start to around 2 years",
+                    individual: "Typically 1.5 to 2 years"
+                },
+                blue: {
+                    title: "Blue Belt - Real Exploration Begins",
+                    badge: "Advanced Beginner",
+                    desc: "A key phase that completes the framework of submission guard systems and passing tactics. It often demands a retention period of at least two years under IBJJF rules.",
+                    cumulative: "About 2 to 5 years total",
+                    individual: "Typically 2 to 3 years"
+                },
+                purple: {
+                    title: "Purple Belt - Crafting Your Own Style",
+                    badge: "Intermediate Leader",
+                    desc: "Your unique game plan becomes clear, and you build a strong lower-body shield from bottom positions. You also support and guide fellow students.",
+                    cumulative: "About 4 to 8 years total",
+                    individual: "Typically 2 to 3 years"
+                },
+                brown: {
+                    title: "Brown Belt - Sophisticated Knot",
+                    badge: "Advanced Master",
+                    desc: "You exploit openings with precise timing and create mechanically efficient transitions. This phase is the final promotion gateway before mastery.",
+                    cumulative: "About 6 to 10 years total",
+                    individual: "Typically 1.5 to 2 years"
+                },
+                black: {
+                    title: "Black Belt - The Beginning of the Path",
+                    badge: "Grand Specialist",
+                    desc: "The stage of fully embodying leverage across theory, technique, and the entire body. It is not settling but the start of academic depth.",
+                    cumulative: "At least 10 years of cumulative dedication",
+                    individual: "At least 10 years of sustained practice"
+                }
+            }
+        };
+
+        function showBeltInfo(beltKey) {
+            const data = beltData[currentLanguage] && beltData[currentLanguage][beltKey];
+            if (!data) return;
+
+            currentSelectedBelt = beltKey;
+            const card = document.getElementById('belt-detail-card');
+            const titleEl = document.getElementById('belt-title');
+            const descEl = document.getElementById('belt-desc');
+            const cumulativeEl = document.getElementById('belt-duration-cumulative');
+            const individualEl = document.getElementById('belt-duration-individual');
+            const badgeEl = document.getElementById('belt-badge');
+
+            card.classList.add('opacity-40', 'scale-95');
+
+            setTimeout(() => {
+                titleEl.textContent = data.title;
+                descEl.textContent = data.desc;
+                cumulativeEl.textContent = data.cumulative;
+                individualEl.textContent = data.individual;
+                badgeEl.textContent = data.badge;
+
+                badgeEl.className = `px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase inline-block belt-${beltKey}`;
+                card.classList.remove('opacity-40', 'scale-95');
+            }, 150);
+        }
+
+        /* ==================== 4. 모달 제어 ==================== */
+        const techData = {
+            ko: {
+                triangle: {
+                    title: "트라이앵글 초크 (Triangle Choke) 지레학",
+                    mechanics: "상대의 목동맥 한 방향은 나의 허벅지로, 반대 방향은 압박당해 밀려 들어간 상대 자신의 어깨를 받침대로 하여 가둔 채 누릅니다. 이를 위해 두 허벅지를 삼각형으로 단단히 결속하여 공간 누출을 0%로 줄여 혈류 공급을 차단합니다.",
+                    defense: "머리와 척추를 일직선으로 곧게 펴는 'Posture Up' 방어법을 수행하여 상대가 머리 뒤를 잠그지 못하도록 기계적 유격을 지속 확보해야 탈출할 수 있습니다."
+                },
+                armbar: {
+                    title: "암바 (Armbar) 1종 지레 메커니즘",
+                    mechanics: "상대 팔뚝을 잡은 나의 두 손은 힘점(Force), 상대 팔꿈치가 올라간 나의 골반 결합부는 지점(Fulcrum), 상대 팔을 펴지게 꺾어 내리는 나의 엉덩이 힘은 작용점 역할을 하여 안전각을 초과 과신전시킵니다.",
+                    defense: "상대 둔부 결합선 안으로 나의 구부러진 팔꿈치를 깊숙이 숨겨놓고, 상대의 허벅지 한 곳을 강하게 밀며 회전하는 탈출(Hitchhiker Escape)로 파쇄합니다."
+                },
+                sweep: {
+                    title: "스윕 (Sweep) 기저면 전복 전술",
+                    mechanics: "가드 포지션은 매트 아래에서 진행되지만, 상대의 사지 베이스(양 무릎, 손) 중 하나를 완벽하게 붙잡아두어 지지대를 없앱니다. 그 뒤 기저면 축 밖으로 상대의 상반신 질량중심을 무너뜨려 전복시킵니다.",
+                    defense: "기저면을 순식간에 확장하기 위해 붙잡히지 않은 팔다리를 외곽으로 밀치며 무게 중심을 지면에 가라앉혀 수직 축을 고정시킵니다."
+                }
+            },
+            en: {
+                triangle: {
+                    title: "Triangle Choke leverage study",
+                    mechanics: "One carotid side is compressed by your thigh while the opponent’s shoulder becomes the supporting fulcrum, locking the triangle and cutting off blood flow through a precise mechanical seal.",
+                    defense: "Regain posture by extending the head and spine straight, preventing the opponent from locking behind the head and maintaining mechanical space for escape."
+                },
+                armbar: {
+                    title: "Armbar first-class lever mechanics",
+                    mechanics: "Your hands act as force, the hip becomes the fulcrum, and your body extends the opponent’s arm beyond its safe angle, turning the arm into a lever for submission.",
+                    defense: "Hide your bent elbow close to your hip line and create rotation with a hitchhiker-style escape while pushing the opponent’s thigh to break the position."
+                },
+                sweep: {
+                    title: "Sweep base inversion tactics",
+                    mechanics: "From guard, you remove one of the opponent’s base points and shift their center of mass outside your base, collapsing their support to execute the sweep.",
+                    defense: "Extend the ungripped limbs, lower your center of gravity to the mat, and fix the vertical axis to prevent the opponent from tipping you over."
+                }
+            }
+        };
+
+        function openModal(techKey) {
+            currentOpenTech = techKey;
+            const data = techData[currentLanguage] && techData[currentLanguage][techKey];
+            if (!data) return;
+
+            document.getElementById('modal-title').textContent = data.title;
+            document.getElementById('modal-mechanics').textContent = data.mechanics;
+            document.getElementById('modal-defense').textContent = data.defense;
+
+            const modal = document.getElementById('tech-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('modal-content').classList.remove('scale-95');
+                document.getElementById('modal-content').classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            currentOpenTech = null;
+            const modal = document.getElementById('tech-modal');
+            document.getElementById('modal-content').classList.remove('scale-100');
+            document.getElementById('modal-content').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 100);
+        }
+
+        function closeModalOnOuterClick(event) {
+            if (event.target === document.getElementById('tech-modal')) {
+                closeModal();
+            }
+        }
+
+        /* ==================== 5. 로컬스토리지 연동 및 게이미피케이션 (EXP / 뱃지) ==================== */
+        let trainingLogs = [];
+        let userEXP = 0;
+        let currentBeltLevel = 0; // 승급 폭죽 효과 트리거를 위한 레벨 상태
+
+        // 슬라이더 바인딩
+        const logRpe = document.getElementById('log-rpe');
+        const rpeVal = document.getElementById('rpe-val');
+        logRpe.addEventListener('input', () => {
+            updateRpeText(logRpe.value);
+        });
+
+        // 에러 방지용 스토리지 래퍼 (데이터 영구 보존용)
+        function getSaveData(key) {
+            try { return localStorage.getItem(key); } catch(e) { return null; }
+        }
+
+        function setSaveData(key, value) {
+            try { localStorage.setItem(key, value); } catch(e) {}
+        }
+
+        // 데이터 로드
+        function initApp() {
+            const savedLogs = getSaveData('bjj_logs');
+            const savedEXP = getSaveData('bjj_exp');
+
+            if (savedLogs) {
+                // 파싱 에러 방어 코드 (데이터 무결성 확보)
+                try {
+                    trainingLogs = JSON.parse(savedLogs);
+                } catch(e) {
+                    trainingLogs = [];
+                }
+            } else {
+                // 초깃값 데이터 (디자인이 비어 보이지 않게 설계)
+                trainingLogs = [
+                    { id: 1, date: '2026-07-08', tech: '클로즈 가드 암바', rounds: 3, rpe: 6, feedback: '골반 유연성이 부족해 지레 중심점이 흔들림.' }
+                ];
+            }
+
+            if (savedEXP) {
+                userEXP = parseInt(savedEXP, 10);
+            } else {
+                userEXP = 45; // 초기 경험치 지급
+            }
+            
+            // 초기 벨트 레벨 설정 (폭죽 오작동 방지)
+            currentBeltLevel = getBeltLevel(userEXP);
+
+            showBeltInfo('white');
+            updateDashboard();
+            revealElements();
+        }
+
+        function saveState() {
+            setSaveData('bjj_logs', JSON.stringify(trainingLogs));
+            setSaveData('bjj_exp', userEXP.toString());
+        }
+
+        function addTrainingLog(event) {
+            event.preventDefault();
+
+            const dateVal = document.getElementById('log-date').value;
+            const techVal = document.getElementById('log-tech').value;
+            const roundsVal = parseInt(document.getElementById('log-rounds').value, 10);
+            const rpeVal = parseInt(document.getElementById('log-rpe').value, 10);
+            const feedbackVal = document.getElementById('log-feedback').value;
+
+            // 라운드당 20 EXP + 피드백 보너스 제공
+            const earnedEXP = (roundsVal * 20) + (feedbackVal.length > 20 ? 30 : 10);
+            userEXP += earnedEXP;
+
+            const newLog = {
+                id: Date.now(),
+                date: dateVal,
+                tech: techVal,
+                rounds: roundsVal,
+                rpe: rpeVal,
+                feedback: feedbackVal
+            };
+
+            trainingLogs.push(newLog);
+            saveState();
+            updateDashboard();
+            
+            // 입력 폼 리셋
+            document.getElementById('log-form').reset();
+            document.getElementById('log-rpe').value = 5;
+            document.getElementById('rpe-val').textContent = 'RPE 5';
+        }
+
+        function deleteLog(id) {
+            trainingLogs = trainingLogs.filter(log => log.id !== id);
+            // 삭제 시 패널티 소량 차감 (최소 0)
+            userEXP = Math.max(0, userEXP - 50);
+            saveState();
+            updateDashboard();
+        }
+
+        // 게이미피케이션 핵심 대시보드 새로고침
+        function updateDashboard() {
+            // 1. 경험치 연동 벨트 레벨 및 마일스톤 설계
+            const beltNames = getTranslation(currentLanguage, 'dashboard.beltName');
+            const beltNext = getTranslation(currentLanguage, 'dashboard.beltNext');
+
+            let currentBelt = beltNames?.white || "화이트 벨트 (White Belt)";
+            let nextBeltText = beltNext?.blue || "500 EXP (블루 벨트 목표)";
+            let nextMilestoneVal = 500;
+            let prevMilestoneVal = 0;
+
+            if (userEXP >= 2000) {
+                currentBelt = beltNames?.black || "블랙 벨트 (Black Belt) ★";
+                nextBeltText = beltNext?.mastery || "마스터 등급 도달!";
+                nextMilestoneVal = 2000;
+                prevMilestoneVal = 1500;
+            } else if (userEXP >= 1500) {
+                currentBelt = beltNames?.brown || "브라운 벨트 (Brown Belt)";
+                nextBeltText = beltNext?.black || "2000 EXP (블랙 벨트 목표)";
+                nextMilestoneVal = 2000;
+                prevMilestoneVal = 1500;
+            } else if (userEXP >= 1000) {
+                currentBelt = beltNames?.purple || "퍼플 벨트 (Purple Belt)";
+                nextBeltText = beltNext?.brown || "1500 EXP (브라운 벨트 목표)";
+                nextMilestoneVal = 1500;
+                prevMilestoneVal = 1000;
+            } else if (userEXP >= 500) {
+                currentBelt = beltNames?.blue || "블루 벨트 (Blue Belt)";
+                nextBeltText = beltNext?.purple || "1000 EXP (퍼플 벨트 목표)";
+                prevMilestoneVal = 500;
+            }
+
+            // 1.5 폭죽 효과 트리거 (레벨업 감지)
+            const newBeltLevel = getBeltLevel(userEXP);
+            if (newBeltLevel > currentBeltLevel) {
+                fireConfetti(); // 승급 축하 폭죽!
+                currentBeltLevel = newBeltLevel;
+            } else if (newBeltLevel < currentBeltLevel) {
+                currentBeltLevel = newBeltLevel; // 기록 삭제로 강등 시 레벨 동기화
+            }
+
+            // 게이지 백분율 계산
+            const expProgress = ((userEXP - prevMilestoneVal) / (nextMilestoneVal - prevMilestoneVal)) * 100;
+            const cappedProgress = Math.min(Math.max(expProgress, 0), 100);
+
+            document.getElementById('current-user-belt').textContent = currentBelt;
+            document.getElementById('user-total-exp').textContent = `${userEXP} EXP`;
+            document.getElementById('current-belt-milestone').textContent = `${prevMilestoneVal} EXP`;
+            document.getElementById('next-belt-milestone').textContent = nextBeltText;
+            document.getElementById('exp-bar-fill').style.width = `${cappedProgress}%`;
+
+            const logCountText = getTranslation(currentLanguage, 'dashboard.logCount') || '총 {count}개 세션 수련 완료';
+            document.getElementById('log-count').textContent = logCountText.replace('{count}', trainingLogs.length);
+
+            return getBeltLevel(userEXP);
+        }
+
+        function getBeltLevel(exp) {
+            if (exp >= 2000) return 5;
+            if (exp >= 1500) return 4;
+            if (exp >= 1000) return 3;
+            if (exp >= 500) return 2;
+            return 1;
+        }
+
+        // 캔버스 폭죽(Confetti) 연출 함수
+        function fireConfetti() {
+            var duration = 3 * 1000;
+            var animationEnd = Date.now() + duration;
+            var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            var interval = setInterval(function() {
+                var timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                var particleCount = 50 * (timeLeft / duration);
+                // 양쪽에서 폭죽 발사
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // 업적 체크엔진
+        function checkBadges() {
+            const b1 = document.getElementById('badge-step-1');
+            const b2 = document.getElementById('badge-rolling');
+            const b3 = document.getElementById('badge-iron');
+            const b4 = document.getElementById('badge-expert');
+
+            // 첫 걸음: 로그 개수 1개 이상
+            if (trainingLogs.length >= 1) {
+                b1.classList.remove('opacity-30');
+                b1.classList.add('border-indigo-500', 'bg-indigo-500/10');
+            } else {
+                b1.classList.add('opacity-30');
+                b1.classList.remove('border-indigo-500', 'bg-indigo-500/10');
+            }
+
+            // 롤링 머신: 스파링 총 라운드 10R 이상
+            const totalR = trainingLogs.reduce((acc, curr) => acc + curr.rounds, 0);
+            if (totalR >= 10) {
+                b2.classList.remove('opacity-30');
+                b2.classList.add('border-cyan-500', 'bg-cyan-500/10');
+            } else {
+                b2.classList.add('opacity-30');
+                b2.classList.remove('border-cyan-500', 'bg-cyan-500/10');
+            }
+
+            // 이성적 무술: RPE 강도를 체크하여 8단계 이상 가혹한 훈련 3회 이상
+            const hardLogs = trainingLogs.filter(log => log.rpe >= 8);
+            if (hardLogs.length >= 3) {
+                b3.classList.remove('opacity-30');
+                b3.classList.add('border-pink-500', 'bg-pink-500/10');
+            } else {
+                b3.classList.add('opacity-30');
+                b3.classList.remove('border-pink-500', 'bg-pink-500/10');
+            }
+
+            // 프로 롤러: EXP 800 이상 달성
+            if (userEXP >= 800) {
+                b4.classList.remove('opacity-30');
+                b4.classList.add('border-yellow-500', 'bg-yellow-500/10');
+            } else {
+                b4.classList.add('opacity-30');
+                b4.classList.remove('border-yellow-500', 'bg-yellow-500/10');
+            }
+        }
+
+        function renderLogsList() {
+            const container = document.getElementById('log-list');
+            const emptyP = document.getElementById('empty-placeholder');
+            const countBadge = document.getElementById('log-count');
+
+            const logCountText = getTranslation(currentLanguage, 'dashboard.logCount') || '총 {count}개 세션 수련 완료';
+            countBadge.textContent = logCountText.replace('{count}', trainingLogs.length);
+
+            if (trainingLogs.length === 0) {
+                container.innerHTML = '';
+                container.appendChild(emptyP);
+                return;
+            }
+
+            container.innerHTML = '';
+            // 역순 정렬 (최신 훈련일지가 맨 위로)
+            const sorted = [...trainingLogs].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            const roundText = getTranslation(currentLanguage, 'dashboard.roundsShort') || '{count} R';
+            const rpeTextTemplate = getTranslation(currentLanguage, 'dashboard.rpeShort') || 'RPE {value}';
+            const deleteTitle = getTranslation(currentLanguage, 'dashboard.deleteLog') || '기록 삭제';
+
+            sorted.forEach(log => {
+                const item = document.createElement('div');
+                item.className = "bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-start justify-between gap-4 transition-all hover:border-indigo-500/50";
+                item.innerHTML = `
+                    <div class="space-y-2 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xs text-slate-400 font-mono font-bold">${log.date}</span>
+                            <span class="bg-indigo-500/10 text-indigo-500 text-xs px-2.5 py-0.5 rounded-full font-bold">${log.tech}</span>
+                            <span class="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold">${roundText.replace('{count}', log.rounds)}</span>
+                            <span class="bg-rose-500/10 text-rose-500 text-xs px-2 py-0.5 rounded-full font-bold">${rpeTextTemplate.replace('{value}', log.rpe)}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">${log.feedback}</p>
+                    </div>
+                    <button onclick="deleteLog(${log.id})" class="text-slate-400 hover:text-red-500 transition-colors p-1" title="${deleteTitle}">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        /* ==================== 6. 멀티 가중치 플레이 스타일 테스트 고도화 ==================== */
+        const quizData = {
+            ko: [
+                {
+                    step: 1,
+                    question: "스파링 시작을 선언할 때, 주로 유도하는 전술 설계 방향은?",
+                    options: [
+                        { text: "스스로 아래로 앉아 안정적인 가드 쉴드로 상대를 묶는다.", value: "guard" },
+                        { text: "선 상태에서 태클이나 압박으로 상대를 넘겨 상위를 노린다.", value: "pass" }
+                    ]
+                },
+                {
+                    step: 2,
+                    question: "상대방과의 스파링 도중, 주로 에너지를 투자하는 비중은?",
+                    options: [
+                        { text: "스윕을 통한 타이밍 확보 및 삼각초크 등의 카운터 트랩 포착", value: "guard" },
+                        { text: "상대의 다리를 치우고 상위 사이드 압박 및 무릎 누르기 압박 고정", value: "pass" }
+                    ]
+                },
+                {
+                    step: 3,
+                    question: "어려운 상대와 교전 중일 때, 당신의 두뇌 속 메커니즘 우선순위는?",
+                    options: [
+                        { text: "공격 베이스 차단과 역이용, 가드 리커버리로 절대 뚫리지 않기", value: "guard" },
+                        { text: "체중의 수직 부하, 밀어붙이는 기동 속도를 늘려 프레임 분쇄하기", value: "pass" }
+                    ]
+                }
+            ],
+            en: [
+                {
+                    step: 1,
+                    question: "When starting sparring, which tactic do you usually try to set up?",
+                    options: [
+                        { text: "Sit low and bind the opponent with a stable guard shield.", value: "guard" },
+                        { text: "Stay standing and use takedowns or pressure to pass to top position.", value: "pass" }
+                    ]
+                },
+                {
+                    step: 2,
+                    question: "During sparring, where do you invest most of your energy?",
+                    options: [
+                        { text: "Securing timing for sweeps and traps like triangle choke counters.", value: "guard" },
+                        { text: "Clearing the opponent’s legs and applying top-side pressure with knee control.", value: "pass" }
+                    ]
+                },
+                {
+                    step: 3,
+                    question: "Against a tough opponent, what priority drives your internal mechanics?",
+                    options: [
+                        { text: "Block and reuse base while recovering guard so I never get passed.", value: "guard" },
+                        { text: "Increase vertical load and momentum to crush their frame.", value: "pass" }
+                    ]
+                }
+            ]
+        };
+
+        let quizStep = 0;
+        let quizScores = { guard: 0, pass: 0 };
+
+        function renderQuiz() {
+            const questions = quizData[currentLanguage] || quizData['ko'];
+            const stepData = questions[quizStep];
+            const pBar = document.getElementById('quiz-progress-bar');
+            const stepText = document.getElementById('quiz-step-count');
+            const qTitle = document.getElementById('quiz-question');
+            const optsContainer = document.getElementById('quiz-options');
+
+            pBar.style.width = `${((quizStep + 1) / questions.length) * 100}%`;
+            const stepLabel = getTranslation(currentLanguage, 'quiz.questionStep') || 'Question {current} of {total}';
+            stepText.textContent = stepLabel.replace('{current}', quizStep + 1).replace('{total}', questions.length);
+            qTitle.textContent = stepData.question;
+            optsContainer.innerHTML = '';
+
+            stepData.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.onclick = () => selectQuizAnswer(opt.value);
+                btn.className = "w-full py-4 px-5 text-left text-sm font-semibold rounded-2xl bg-white dark:bg-slate-900 hover:bg-indigo-500/10 dark:hover:bg-indigo-500/10 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all transform active:scale-[0.98]";
+                btn.textContent = opt.text;
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function selectQuizAnswer(val) {
+            quizScores[val]++;
+            const questions = quizData[currentLanguage] || quizData['ko'];
+            if (quizStep < questions.length - 1) {
+                quizStep++;
+                renderQuiz();
+            } else {
+                showQuizResult();
+            }
+        }
+
+        function showQuizResult() {
+            document.getElementById('quiz-question-container').classList.add('hidden');
+            const resBox = document.getElementById('quiz-result');
+            const resTitle = document.getElementById('result-title');
+            const resDesc = document.getElementById('result-desc');
+
+            resBox.classList.remove('hidden');
+
+            const resultKey = quizScores.guard >= quizScores.pass ? 'guard' : 'pass';
+            const resultTitle = getTranslation(currentLanguage, `quiz.results.${resultKey}.title`);
+            const resultDesc = getTranslation(currentLanguage, `quiz.results.${resultKey}.desc`);
+            resTitle.textContent = resultTitle || (resultKey === 'guard' ? '가드 플레이어 (Guard Player)' : '가드 패서 (Guard Passer / Top Leader)');
+            resTitle.className = `text-2xl font-black ${resultKey === 'guard' ? 'text-indigo-500' : 'text-emerald-500'} mb-3`;
+            resDesc.textContent = resultDesc || (resultKey === 'guard'
+                ? '당신은 중력을 나에게 유용하게 분배하고, 상대를 거미줄처럼 다리로 감싸 침몰시키는 똑똑한 가드 플레이어입니다! 델라히바, 클로즈가드를 활용해 빈틈을 파고들어 스윕이나 하부 삼각초크를 노리는 성향입니다.'
+                : '당신은 가드를 분쇄하고, 체중의 수직 힘을 지레로 승화해 상대를 지면으로 제압하는 강력한 탑 포지션 압박 패서입니다! 기동력을 이용한 토레안도 패스, 묵직한 하프가드 패스를 선호합니다.');
+        }
+
+        function resetQuiz() {
+            quizStep = 0;
+            quizScores = { guard: 0, pass: 0 };
+            document.getElementById('quiz-question-container').classList.remove('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+            renderQuiz();
+        }
+
+        /* ==================== 7. DOMContentLoaded (외부 로딩 차단 무관하게 즉시 실행 보장) ==================== */
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // 1. 테마 토글 버튼 이벤트 바인딩
+            const themeBtn = document.getElementById('theme-toggle');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', toggleTheme);
+            }
+
+            // 2. 모바일 메뉴 토글 이벤트 바인딩
+            const menuBtn = document.getElementById('menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            if (menuBtn && mobileMenu) {
+                menuBtn.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                });
+            }
+
+            // 2-1. 언어 토글 버튼 바인딩
+            const languageBtn = document.getElementById('language-toggle');
+            if (languageBtn) {
+                languageBtn.addEventListener('click', toggleLanguage);
+            }
+
+            // 3. 네비게이션 스무스 스크롤 바인딩 (인라인 이벤트 대체)
+            document.querySelectorAll('.nav-link').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault(); // href 기본 앵커 이동 방지
+                    const targetId = this.getAttribute('href').substring(1);
+                    const el = document.getElementById(targetId);
+                    
+                    if (el) {
+                        const y = el.getBoundingClientRect().top + window.scrollY - 80;
+                        window.scrollTo({top: y, behavior: 'smooth'});
+                    }
+                    
+                    // 모바일 메뉴가 열려있다면 링크 클릭 시 닫기
+                    if (mobileMenu && !mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+            });
+
+            // 4. 앱 초기화 및 애니메이션 실행
+            initLanguage();
+            initApp();
+            renderQuiz();
+            createParticles();
+        });
+    </script>
+</body>
+</html>
