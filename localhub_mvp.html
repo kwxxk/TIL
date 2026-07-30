@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalHub - Busan</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Vue 3 & Vue i18n -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* 커스텀 스크롤바 & 트랜지션 애니메이션 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
+        .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col relative" v-cloak>
+        
+        <!-- Header / GNB -->
+        <header class="bg-blue-600 text-white shadow-md sticky top-0 z-40">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2 cursor-pointer" @click="currentView = 'home'">
+                    <i class="fa-solid fa-map-location-dot text-2xl"></i>
+                    <h1 class="text-2xl font-bold tracking-tight">LocalHub <span class="text-sm font-normal text-blue-200">Busan</span></h1>
+                </div>
+                
+                <nav class="hidden md:flex gap-6 font-medium">
+                    <a href="#" @click.prevent="currentView = 'home'" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'home'}" class="hover:text-yellow-200 py-1">{{ $t('nav.home') }}</a>
+                    <a href="#" @click.prevent="currentView = 'info'" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'info'}" class="hover:text-yellow-200 py-1">{{ $t('nav.info') }}</a>
+                    <a href="#" @click.prevent="currentView = 'board'" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'board'}" class="hover:text-yellow-200 py-1">{{ $t('nav.community') }}</a>
+                </nav>
+
+                <!-- 다국어(i18n) 선택 드롭다운 -->
+                <div class="flex items-center gap-3 relative">
+                    <button @click="showLangMenu = !showLangMenu" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-bold border border-blue-500 transition flex items-center gap-2">
+                        <i class="fa-solid fa-globe"></i> Language <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
+                    </button>
+                    <div v-if="showLangMenu" class="absolute top-full right-0 mt-2 w-32 bg-white rounded-md shadow-xl border border-gray-100 z-50 overflow-hidden">
+                        <a href="#" @click.prevent="changeLanguage('ko')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">한국어</a>
+                        <a href="#" @click.prevent="changeLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">English</a>
+                        <a href="#" @click.prevent="changeLanguage('ja')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">日本語</a>
+                        <a href="#" @click.prevent="changeLanguage('zh')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium">中文</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8" @click="showLangMenu = false">
+            <transition name="fade" mode="out-in">
+                
+                <!-- 1. Home Dashboard View -->
+                <div v-if="currentView === 'home'" key="home" class="space-y-8">
+                    <section class="bg-white rounded-xl shadow p-8 text-center border-t-4 border-blue-500">
+                        <h2 class="text-3xl font-bold mb-3 text-gray-800">{{ $t('home.welcome') }}</h2>
+                        <p class="text-gray-500 mb-6 max-w-2xl mx-auto">{{ $t('home.desc') }}</p>
+                        <div class="flex justify-center gap-4">
+                            <button @click="currentView = 'info'" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow font-medium transition">{{ $t('home.exploreBtn') }}</button>
+                        </div>
+                    </section>
+
+                    <!-- 선택기능 2: 데이터 시각화 대시보드 -->
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <h3 class="text-xl font-bold mb-4 border-b pb-2"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>{{ $t('home.dashboardTitle') }}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="flex justify-center h-64 relative">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <h4 class="font-bold text-gray-700 mb-3">{{ $t('home.statTitle') }}</h4>
+                                <ul class="space-y-3">
+                                    <li v-for="(count, category) in categoryStats" :key="category" class="flex justify-between items-center bg-gray-50 px-4 py-2 rounded border border-gray-100">
+                                        <span class="font-medium text-gray-600">{{ $t('categories.' + category) }}</span>
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">{{ count }} {{ $t('home.countUnit') }}</span>
+                                    </li>
+                                </ul>
+                                <p class="text-xs text-gray-400 mt-4 text-right">* Data Source: TourAPI 4.0</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 2. Regional Info List View -->
+                <div v-else-if="currentView === 'info'" key="info">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-map-location text-blue-500 mr-2"></i>{{ $t('info.title') }}</h2>
+                        <select v-model="selectedCategory" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">{{ $t('info.all') }}</option>
+                            <option value="tour">{{ $t('categories.tour') }}</option>
+                            <option value="culture">{{ $t('categories.culture') }}</option>
+                            <option value="shop">{{ $t('categories.shop') }}</option>
+                            <option value="leports">{{ $t('categories.leports') }}</option>
+                            <option value="festival">{{ $t('categories.festival') }}</option>
+                            <option value="sleep">{{ $t('categories.sleep') }}</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="item in filteredInfoData" :key="item.contentid" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group">
+                            <div class="h-48 bg-gray-200 relative overflow-hidden">
+                                <img v-if="item.firstimage" :src="item.firstimage" alt="thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                                <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                                    <i class="fa-regular fa-image text-4xl"></i>
+                                </div>
+                                <span class="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">{{ $t('categories.' + item.category) }}</span>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="font-bold text-lg mb-2 text-gray-800 truncate" :title="item.title">{{ item.title }}</h3>
+                                <p class="text-sm text-gray-500 line-clamp-2"><i class="fa-solid fa-location-dot mr-1"></i>{{ item.addr1 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Community Board List (추가기능 반영) -->
+                <div v-else-if="currentView === 'board'" key="board" class="bg-white rounded-xl shadow p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-users text-blue-500 mr-2"></i>{{ $t('board.title') }}</h2>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <!-- 검색 기능 -->
+                            <div class="relative w-full md:w-64">
+                                <input type="text" v-model="searchQuery" :placeholder="$t('board.searchPlaceholder')" class="w-full border rounded-lg pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                            </div>
+                            <button @click="currentView = 'boardWrite'; editMode = false;" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap shadow transition">
+                                <i class="fa-solid fa-pen mr-1"></i>{{ $t('board.writeBtn') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-y border-gray-200 text-gray-600 text-sm">
+                                    <th class="py-3 px-4 w-16 text-center">No</th>
+                                    <th class="py-3 px-4">{{ $t('board.postTitle') }}</th>
+                                    <th class="py-3 px-4 w-24 text-center"><i class="fa-solid fa-heart text-red-400"></i></th>
+                                    <th class="py-3 px-4 w-32 text-center">{{ $t('board.date') }}</th>
+                                    <th class="py-3 px-4 w-20 text-center">{{ $t('board.views') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="filteredPosts.length === 0">
+                                    <td colspan="5" class="py-12 text-center text-gray-500">{{ $t('board.noData') }}</td>
+                                </tr>
+                                <tr v-for="(post, index) in filteredPosts" :key="post.id" @click="viewPost(post.id)" class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition">
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ filteredPosts.length - index }}</td>
+                                    <td class="py-3 px-4 font-medium text-gray-800">
+                                        {{ post.title }}
+                                        <i v-if="post.image" class="fa-regular fa-image ml-2 text-gray-400"></i>
+                                        <div v-if="post.tags && post.tags.length > 0" class="mt-1">
+                                            <span v-for="tag in post.tags" :key="tag" class="text-xs text-blue-500 mr-2">#{{ tag }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ post.likes || 0 }}</td>
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ formatDate(post.createdAt) }}</td>
+                                    <td class="py-3 px-4 text-center text-gray-400 text-sm">{{ post.views }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. Community Board Detail (추가기능 반영) -->
+                <div v-else-if="currentView === 'boardDetail'" key="boardDetail" class="bg-white rounded-xl shadow p-6 max-w-4xl mx-auto">
+                    <div class="border-b pb-4 mb-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h2 class="text-3xl font-bold text-gray-800">{{ activePost.title }}</h2>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-500">
+                            <span><i class="fa-solid fa-clock mr-1"></i>{{ formatDate(activePost.createdAt) }}</span>
+                            <span><i class="fa-solid fa-eye mr-1"></i>{{ activePost.views }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="min-h-[150px] text-gray-700 whitespace-pre-wrap leading-relaxed mb-6">
+                        {{ activePost.content }}
+                    </div>
+
+                    <!-- 첨부 이미지 표시 -->
+                    <div v-if="activePost.image" class="mb-6">
+                        <img :src="activePost.image" alt="첨부 이미지" class="max-w-full h-auto max-h-96 rounded-lg shadow-sm border border-gray-200">
+                    </div>
+
+                    <!-- 태그 표시 -->
+                    <div v-if="activePost.tags && activePost.tags.length > 0" class="flex flex-wrap gap-2 mb-8">
+                        <span v-for="tag in activePost.tags" :key="tag" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium border border-blue-100">#{{ tag }}</span>
+                    </div>
+
+                    <!-- 좋아요 & 북마크 액션 -->
+                    <div class="flex justify-center gap-6 py-6 border-y border-gray-100 mb-6 bg-gray-50 rounded-xl">
+                        <button @click="toggleLike" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center bg-white shadow-sm border border-gray-200 group-hover:border-red-300 transition mb-2">
+                                <i class="fa-solid fa-heart text-xl" :class="hasLiked(activePost.id) ? 'text-red-500' : 'text-gray-300 group-hover:text-red-400'"></i>
+                            </div>
+                            <span class="text-sm font-bold text-gray-600">{{ $t('board.likes') }} {{ activePost.likes || 0 }}</span>
+                        </button>
+                        <button @click="toggleBookmark" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center bg-white shadow-sm border border-gray-200 group-hover:border-yellow-300 transition mb-2">
+                                <i class="fa-solid fa-bookmark text-xl" :class="hasBookmarked(activePost.id) ? 'text-yellow-500' : 'text-gray-300 group-hover:text-yellow-400'"></i>
+                            </div>
+                            <span class="text-sm font-bold text-gray-600">{{ $t('board.bookmarks') }} {{ activePost.bookmarks || 0 }}</span>
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <button @click="currentView = 'board'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2 rounded-lg text-sm font-medium transition">
+                            <i class="fa-solid fa-list mr-1"></i>{{ $t('board.listBtn') }}
+                        </button>
+                        <div class="flex gap-2">
+                            <button @click="openPasswordModal('edit')" class="border border-blue-500 text-blue-600 hover:bg-blue-50 px-5 py-2 rounded-lg text-sm font-medium transition">{{ $t('board.editBtn') }}</button>
+                            <button @click="openPasswordModal('delete')" class="border border-red-500 text-red-600 hover:bg-red-50 px-5 py-2 rounded-lg text-sm font-medium transition">{{ $t('board.deleteBtn') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Community Board Write/Edit (추가기능 반영) -->
+                <div v-else-if="currentView === 'boardWrite'" key="boardWrite" class="bg-white rounded-xl shadow p-6 max-w-4xl mx-auto">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">
+                        {{ editMode ? $t('board.editTitle') : $t('board.writeTitle') }}
+                    </h2>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.postTitle') }}</label>
+                            <input type="text" v-model="writeForm.title" :placeholder="$t('board.titlePlaceholder')" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.content') }}</label>
+                            <textarea v-model="writeForm.content" rows="8" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"></textarea>
+                        </div>
+
+                        <!-- 선택기능: 이미지 첨부 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.image') }} <span class="text-xs text-gray-400 font-normal">(Max 1MB, LocalStorage 한계)</span></label>
+                            <input type="file" accept="image/*" @change="handleImageUpload" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none text-sm bg-gray-50 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <div v-if="writeForm.image" class="mt-3 relative inline-block">
+                                <img :src="writeForm.image" class="h-32 rounded-lg border border-gray-200 object-cover shadow-sm">
+                                <button @click="writeForm.image = null" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- 선택기능: 태그 -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.tags') }}</label>
+                            <input type="text" v-model="writeForm.tagsStr" :placeholder="$t('board.tagsPlaceholder')" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div v-if="!editMode">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.password') }}</label>
+                            <input type="password" v-model="writeForm.password" placeholder="숫자 4자리 이상 (수정/삭제 시 필요)" class="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <p class="text-xs text-red-400 mt-1">* 주의: 비밀번호는 암호화 없이 로컬 스토리지에 평문으로 저장됩니다. (과제용 제약사항)</p>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4 border-t">
+                            <button @click="currentView = 'board'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-medium transition">{{ $t('common.cancel') }}</button>
+                            <button @click="savePost" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow transition">{{ $t('common.save') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+            </transition>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm z-30">
+            <p>&copy; 2026 LocalHub Busan. All rights reserved.</p>
+            <p class="mt-1">Data Source: TourAPI 4.0 (Type3 License)</p>
+        </footer>
+
+        <!-- Password Confirm Modal -->
+        <div v-if="showPasswordModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all">
+                <h3 class="text-xl font-bold mb-4">{{ $t('board.pwConfirmTitle') }}</h3>
+                <input type="password" v-model="modalPassword" :placeholder="$t('board.password')" @keyup.enter="confirmPassword" class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+                <p v-if="pwError" class="text-red-500 text-sm mb-4">{{ $t('board.pwError') }}</p>
+                <div class="flex justify-end gap-2">
+                    <button @click="showPasswordModal = false; modalPassword = ''; pwError = false;" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">{{ $t('common.cancel') }}</button>
+                    <button @click="confirmPassword" class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow transition">{{ $t('common.confirm') }}</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chatbot Widget (OpenAI 연동) -->
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+            <!-- Chat Window -->
+            <transition name="slide-up">
+                <div v-if="isChatOpen" class="bg-white w-80 sm:w-96 rounded-2xl shadow-2xl overflow-hidden flex flex-col mb-4 border border-gray-200 h-[500px]">
+                    <div class="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+                        <h3 class="font-bold"><i class="fa-solid fa-robot mr-2"></i>LocalHub {{ $t('chat.title') }}</h3>
+                        <button @click="isChatOpen = false" class="text-white hover:text-gray-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    
+                    <div class="flex-grow p-4 overflow-y-auto bg-gray-50 space-y-4" id="chat-messages">
+                        <div v-for="(msg, i) in chatMessages" :key="i" :class="msg.role === 'user' ? 'text-right' : 'text-left'">
+                            <div :class="msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'" 
+                                 class="inline-block px-4 py-2 rounded-2xl max-w-[85%] text-sm text-left shadow-sm">
+                                {{ msg.content }}
+                            </div>
+                        </div>
+                        <div v-if="isChatLoading" class="text-left">
+                            <div class="inline-block px-4 py-2 rounded-2xl bg-white border border-gray-200 rounded-bl-none text-gray-500 text-sm shadow-sm">
+                                <i class="fa-solid fa-circle-notch fa-spin"></i> 입력 중...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Key Warning (SPA 단일파일 과제용 제약 방어 로직) -->
+                    <div v-if="!openaiApiKey" class="px-4 py-2 bg-yellow-50 text-xs text-yellow-800 border-t border-yellow-200">
+                        * OpenAI API 연동을 위해 임시 세션 키를 입력해주세요.<br>
+                        <input type="password" v-model="tempApiKey" placeholder="sk-..." class="mt-1 w-full border border-yellow-300 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-yellow-500">
+                        <button @click="setApiKey" class="mt-1 w-full bg-yellow-400 hover:bg-yellow-500 transition text-yellow-900 rounded py-1 font-bold">키 설정 (새로고침 시 초기화)</button>
+                    </div>
+
+                    <div class="p-3 bg-white border-t border-gray-200">
+                        <div class="flex relative">
+                            <input type="text" v-model="chatInput" @keyup.enter="sendChatMessage" :placeholder="$t('chat.placeholder')" :disabled="!openaiApiKey || isChatLoading"
+                                class="w-full bg-gray-100 border-transparent rounded-full pl-4 pr-12 py-2 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-200 disabled:cursor-not-allowed">
+                            <button @click="sendChatMessage" :disabled="!chatInput.trim() || !openaiApiKey || isChatLoading" 
+                                class="absolute right-1 top-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-400 transition">
+                                <i class="fa-solid fa-paper-plane text-xs relative -left-0.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- Floating Button -->
+            <button @click="isChatOpen = !isChatOpen" class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl hover:bg-blue-700 hover:scale-105 transform transition duration-300 flex items-center justify-center border-2 border-white">
+                <i v-if="!isChatOpen" class="fa-regular fa-comment-dots text-2xl"></i>
+                <i v-else class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+        const { createI18n } = VueI18n;
+
+        // --- 1. MOCK JSON DATA (RFP 제공 데이터 샘플: 부산 권역) ---
+        const MOCK_DATA = [
+            { contentid: "1", category: "tour", title: "해운대해수욕장", addr1: "부산 해운대구 우동", firstimage: "https://images.unsplash.com/photo-1590518685125-951915c2d3a9?w=400&q=80" },
+            { contentid: "2", category: "tour", title: "태종대", addr1: "부산 영도구 전망로", firstimage: "https://images.unsplash.com/photo-1596706917173-0fb68f5cd79c?w=400&q=80" },
+            { contentid: "3", category: "culture", title: "감천문화마을", addr1: "부산 사하구 감내2로", firstimage: "https://images.unsplash.com/photo-1598424108866-51ff6eb1d355?w=400&q=80" },
+            { contentid: "4", category: "shop", title: "국제시장", addr1: "부산 중구 신창동4가", firstimage: "" },
+            { contentid: "5", category: "leports", title: "송도해상케이블카", addr1: "부산 서구 송도해변로", firstimage: "" },
+            { contentid: "6", category: "festival", title: "부산국제영화제", addr1: "부산 해운대구 수영강변대로", firstimage: "" },
+            { contentid: "7", category: "sleep", title: "시그니엘 부산", addr1: "부산 해운대구 달맞이길", firstimage: "" },
+            { contentid: "8", category: "tour", title: "광안리해수욕장", addr1: "부산 수영구 광안해변로", firstimage: "https://images.unsplash.com/photo-1582264426543-c0d1eb6c7d3c?w=400&q=80" }
+        ];
+
+        // --- 2. 다국어 (i18n) 설정 (선택기능 3 완벽 구현: 4개국어) ---
+        const messages = {
+            ko: {
+                nav: { home: "홈", info: "지역 정보", community: "커뮤니티" },
+                home: { welcome: "부산의 생생한 정보를 한눈에!", desc: "외국인 관광객과 내국인 모두를 위한 부산 권역 공공데이터 기반 지역 정보 공유 플랫폼입니다.", exploreBtn: "지역 정보 둘러보기", dashboardTitle: "부산 관광 데이터 대시보드", statTitle: "카테고리별 데이터 현황", countUnit: "건" },
+                categories: { tour: "관광지", culture: "문화시설", shop: "쇼핑", leports: "레포츠", festival: "축제/공연", sleep: "숙박" },
+                info: { title: "부산 지역 정보", all: "전체 카테고리" },
+                board: {
+                    title: "익명 커뮤니티", searchPlaceholder: "게시글 검색...", writeBtn: "글쓰기",
+                    postTitle: "제목", date: "작성일", views: "조회수", likes: "좋아요", bookmarks: "북마크", noData: "게시글이 없습니다.",
+                    listBtn: "목록으로", editBtn: "수정", deleteBtn: "삭제",
+                    writeTitle: "새 게시글 작성", editTitle: "게시글 수정",
+                    titlePlaceholder: "제목을 입력하세요", content: "내용", password: "수정용 비밀번호",
+                    image: "이미지 첨부", tags: "태그 입력", tagsPlaceholder: "콤마(,)로 구분해 입력 (예: 해운대,맛집)",
+                    pwConfirmTitle: "비밀번호 확인", pwError: "비밀번호가 일치하지 않습니다."
+                },
+                chat: { title: "챗봇", placeholder: "무엇을 도와드릴까요?" },
+                common: { save: "등록", cancel: "취소", confirm: "확인" }
+            },
+            en: {
+                nav: { home: "Home", info: "Local Info", community: "Community" },
+                home: { welcome: "Discover Vibrant Busan!", desc: "A public data-driven local information sharing platform for both foreign tourists and locals in Busan.", exploreBtn: "Explore Local Info", dashboardTitle: "Busan Tourism Data Dashboard", statTitle: "Data Status by Category", countUnit: "items" },
+                categories: { tour: "Attraction", culture: "Culture", shop: "Shopping", leports: "Leports", festival: "Festival", sleep: "Lodging" },
+                info: { title: "Busan Local Info", all: "All Categories" },
+                board: {
+                    title: "Anonymous Community", searchPlaceholder: "Search posts...", writeBtn: "Write",
+                    postTitle: "Title", date: "Date", views: "Views", likes: "Likes", bookmarks: "Bookmarks", noData: "No posts available.",
+                    listBtn: "List", editBtn: "Edit", deleteBtn: "Delete",
+                    writeTitle: "Write New Post", editTitle: "Edit Post",
+                    titlePlaceholder: "Enter a title", content: "Content", password: "Password (for Edit/Delete)",
+                    image: "Attach Image", tags: "Tags", tagsPlaceholder: "Separate with commas (e.g., Haeundae,Food)",
+                    pwConfirmTitle: "Confirm Password", pwError: "Incorrect password."
+                },
+                chat: { title: "Chatbot", placeholder: "How can I help you?" },
+                common: { save: "Save", cancel: "Cancel", confirm: "Confirm" }
+            },
+            ja: {
+                nav: { home: "ホーム", info: "地域情報", community: "コミュニティ" },
+                home: { welcome: "釜山の生きた情報を一目で！", desc: "外国人観光客と地元の人のための釜山公共データ基盤情報共有プラットフォームです。", exploreBtn: "地域情報を見る", dashboardTitle: "釜山観光データダッシュボード", statTitle: "カテゴリ別データ状況", countUnit: "件" },
+                categories: { tour: "観光地", culture: "文化施設", shop: "ショッピング", leports: "レジャースポーツ", festival: "お祭り/公演", sleep: "宿泊" },
+                info: { title: "釜山地域情報", all: "全カテゴリ" },
+                board: {
+                    title: "匿名コミュニティ", searchPlaceholder: "投稿を検索...", writeBtn: "投稿する",
+                    postTitle: "タイトル", date: "作成日", views: "閲覧数", likes: "いいね", bookmarks: "ブックマーク", noData: "投稿がありません。",
+                    listBtn: "一覧へ", editBtn: "修正", deleteBtn: "削除",
+                    writeTitle: "新規投稿", editTitle: "投稿修正",
+                    titlePlaceholder: "タイトルを入力してください", content: "内容", password: "パスワード (修正/削除用)",
+                    image: "画像添付", tags: "タグ入力", tagsPlaceholder: "カンマ(,)で区切って入力 (例: 海雲台,グルメ)",
+                    pwConfirmTitle: "パスワード確認", pwError: "パスワードが一致しません。"
+                },
+                chat: { title: "チャットボット", placeholder: "何かお手伝いしましょうか？" },
+                common: { save: "登録", cancel: "キャンセル", confirm: "確認" }
+            },
+            zh: {
+                nav: { home: "主页", info: "地区信息", community: "社区" },
+                home: { welcome: "一目了然釜山的生动信息！", desc: "为外国游客和当地人提供的基于釜山公共数据的地区信息共享平台。", exploreBtn: "查看地区信息", dashboardTitle: "釜山旅游数据仪表板", statTitle: "按类别分类的数据状态", countUnit: "件" },
+                categories: { tour: "旅游景点", culture: "文化设施", shop: "购物", leports: "休闲运动", festival: "庆典/演出", sleep: "住宿" },
+                info: { title: "釜山地区信息", all: "全部分类" },
+                board: {
+                    title: "匿名社区", searchPlaceholder: "搜索帖子...", writeBtn: "发帖",
+                    postTitle: "标题", date: "创建日期", views: "浏览量", likes: "赞", bookmarks: "书签", noData: "没有帖子。",
+                    listBtn: "目录", editBtn: "修改", deleteBtn: "删除",
+                    writeTitle: "发布新帖", editTitle: "修改帖子",
+                    titlePlaceholder: "请输入标题", content: "内容", password: "密码 (用于修改/删除)",
+                    image: "附加图片", tags: "标签", tagsPlaceholder: "用逗号分隔 (例如: 海云台,美食)",
+                    pwConfirmTitle: "确认密码", pwError: "密码不匹配。"
+                },
+                chat: { title: "聊天机器人", placeholder: "我能帮您什么？" },
+                common: { save: "保存", cancel: "取消", confirm: "确认" }
+            }
+        };
+
+        const i18n = createI18n({ locale: 'ko', fallbackLocale: 'en', messages });
+
+        // --- 3. Vue 3 앱 구성 ---
+        const app = createApp({
+            setup() {
+                const currentView = ref('home'); 
+                const showLangMenu = ref(false);
+
+                // 정보 탭 상태
+                const selectedCategory = ref('all');
+                const infoData = ref(MOCK_DATA);
+                
+                // 대시보드 차트 인스턴스
+                let chartInstance = null;
+
+                // 커뮤니티 상태 (선택기능 1: 좋아요, 태그, 이미지 반영)
+                const posts = ref([]);
+                const searchQuery = ref('');
+                const activePost = ref(null);
+                const editMode = ref(false);
+                const writeForm = ref({ id: null, title: '', content: '', password: '', tagsStr: '', image: null });
+                
+                // 모달 상태
+                const showPasswordModal = ref(false);
+                const modalPassword = ref('');
+                const pwError = ref(false);
+                const modalAction = ref('');
+
+                // 좋아요 & 북마크 (Local State for MVP)
+                const myLikes = ref(JSON.parse(localStorage.getItem('localhub_mylikes') || '[]'));
+                const myBookmarks = ref(JSON.parse(localStorage.getItem('localhub_mybookmarks') || '[]'));
+
+                // 챗봇 상태
+                const isChatOpen = ref(false);
+                const chatInput = ref('');
+                const chatMessages = ref([{ role: 'assistant', content: '안녕하세요! 부산 여행과 관련해 무엇을 도와드릴까요?' }]);
+                const isChatLoading = ref(false);
+                const openaiApiKey = ref(''); 
+                const tempApiKey = ref('');
+
+                // Lifecycle
+                onMounted(() => {
+                    loadPosts();
+                    renderChart();
+                });
+
+                watch(currentView, (newVal) => {
+                    if (newVal === 'home') nextTick(() => renderChart());
+                });
+
+                // --- 언어 제어 ---
+                const changeLanguage = (lang) => {
+                    i18n.global.locale = lang;
+                    showLangMenu.value = false;
+                    if (currentView.value === 'home') nextTick(() => renderChart()); // 언어 변경 시 차트 라벨 즉시 갱신
+                };
+
+                // --- 대시보드 로직 (Chart.js) ---
+                const categoryStats = computed(() => {
+                    return { tour: 351, culture: 123, shop: 986, leports: 65, festival: 72, sleep: 140 };
+                });
+
+                const renderChart = () => {
+                    const canvas = document.getElementById('categoryChart');
+                    if (!canvas) return;
+                    if (chartInstance) chartInstance.destroy();
+                    const ctx = canvas.getContext('2d');
+                    const labels = Object.keys(categoryStats.value).map(k => i18n.global.t('categories.' + k));
+                    const data = Object.values(categoryStats.value);
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: data,
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } }
+                    });
+                };
+
+                // --- 지역 정보 로직 ---
+                const filteredInfoData = computed(() => {
+                    if (selectedCategory.value === 'all') return infoData.value;
+                    return infoData.value.filter(item => item.category === selectedCategory.value);
+                });
+
+                // --- 커뮤니티(LocalStorage CRUD 및 추가기능) 로직 ---
+                const loadPosts = () => {
+                    const stored = localStorage.getItem('localhub_posts');
+                    if (stored) posts.value = JSON.parse(stored);
+                };
+
+                const filteredPosts = computed(() => {
+                    if (!searchQuery.value) return posts.value;
+                    const query = searchQuery.value.toLowerCase();
+                    return posts.value.filter(p => p.title.toLowerCase().includes(query) || (p.tags && p.tags.join(',').toLowerCase().includes(query)));
+                });
+
+                const viewPost = (id) => {
+                    const post = posts.value.find(p => p.id === id);
+                    if (post) {
+                        post.views = (post.views || 0) + 1;
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                        activePost.value = { ...post };
+                        currentView.value = 'boardDetail';
+                    }
+                };
+
+                // 이미지 업로드 로직 (Base64 변환)
+                const handleImageUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    if (file.size > 1024 * 1024) { // 1MB 제한 (LocalStorage 용량 터짐 방지)
+                        alert("이미지 크기는 1MB를 초과할 수 없습니다.");
+                        event.target.value = '';
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (e) => { writeForm.value.image = e.target.result; };
+                    reader.readAsDataURL(file);
+                };
+
+                const savePost = () => {
+                    if (!writeForm.value.title.trim() || !writeForm.value.content.trim()) return alert('제목과 내용을 입력해주세요.');
+                    
+                    // 태그 파싱
+                    const parsedTags = writeForm.value.tagsStr.split(',').map(t => t.trim()).filter(t => t !== '');
+
+                    if (editMode.value) {
+                        const idx = posts.value.findIndex(p => p.id === writeForm.value.id);
+                        if (idx > -1) {
+                            posts.value[idx].title = writeForm.value.title;
+                            posts.value[idx].content = writeForm.value.content;
+                            posts.value[idx].tags = parsedTags;
+                            posts.value[idx].image = writeForm.value.image;
+                        }
+                    } else {
+                        if (!writeForm.value.password || writeForm.value.password.length < 4) return alert('비밀번호를 4자리 이상 입력해주세요.');
+                        const newPost = {
+                            id: Date.now(), title: writeForm.value.title, content: writeForm.value.content,
+                            password: writeForm.value.password, views: 0, likes: 0, bookmarks: 0,
+                            tags: parsedTags, image: writeForm.value.image, createdAt: new Date().toISOString()
+                        };
+                        posts.value.unshift(newPost);
+                    }
+                    
+                    try {
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                    } catch (e) {
+                        alert("로컬 스토리지 용량 한계를 초과했습니다. 이미지를 삭제하거나 글을 지워주세요.");
+                        return;
+                    }
+                    
+                    writeForm.value = { id: null, title: '', content: '', password: '', tagsStr: '', image: null };
+                    currentView.value = 'board';
+                };
+
+                // 좋아요 & 북마크 로직
+                const hasLiked = (id) => myLikes.value.includes(id);
+                const hasBookmarked = (id) => myBookmarks.value.includes(id);
+
+                const toggleLike = () => {
+                    const id = activePost.value.id;
+                    const idx = posts.value.findIndex(p => p.id === id);
+                    if (idx > -1) {
+                        if (hasLiked(id)) {
+                            myLikes.value = myLikes.value.filter(i => i !== id);
+                            posts.value[idx].likes = Math.max(0, (posts.value[idx].likes || 1) - 1);
+                        } else {
+                            myLikes.value.push(id);
+                            posts.value[idx].likes = (posts.value[idx].likes || 0) + 1;
+                        }
+                        activePost.value.likes = posts.value[idx].likes;
+                        localStorage.setItem('localhub_mylikes', JSON.stringify(myLikes.value));
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                    }
+                };
+
+                const toggleBookmark = () => {
+                    const id = activePost.value.id;
+                    const idx = posts.value.findIndex(p => p.id === id);
+                    if (idx > -1) {
+                        if (hasBookmarked(id)) {
+                            myBookmarks.value = myBookmarks.value.filter(i => i !== id);
+                            posts.value[idx].bookmarks = Math.max(0, (posts.value[idx].bookmarks || 1) - 1);
+                        } else {
+                            myBookmarks.value.push(id);
+                            posts.value[idx].bookmarks = (posts.value[idx].bookmarks || 0) + 1;
+                        }
+                        activePost.value.bookmarks = posts.value[idx].bookmarks;
+                        localStorage.setItem('localhub_mybookmarks', JSON.stringify(myBookmarks.value));
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                    }
+                };
+
+                const openPasswordModal = (action) => {
+                    modalAction.value = action;
+                    showPasswordModal.value = true;
+                    pwError.value = false;
+                    modalPassword.value = '';
+                };
+
+                const confirmPassword = () => {
+                    if (modalPassword.value === activePost.value.password) {
+                        showPasswordModal.value = false;
+                        if (modalAction.value === 'edit') {
+                            editMode.value = true;
+                            writeForm.value = { ...activePost.value, password: '', tagsStr: (activePost.value.tags || []).join(', ') };
+                            currentView.value = 'boardWrite';
+                        } else if (modalAction.value === 'delete') {
+                            posts.value = posts.value.filter(p => p.id !== activePost.value.id);
+                            localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                            currentView.value = 'board';
+                        }
+                    } else { pwError.value = true; }
+                };
+
+                const formatDate = (isoString) => {
+                    const d = new Date(isoString);
+                    const pad = (n) => n.toString().padStart(2, '0');
+                    return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                };
+
+                // --- 챗봇(OpenAI) 로직 ---
+                const setApiKey = () => {
+                    if(tempApiKey.value.trim() !== '') {
+                        openaiApiKey.value = tempApiKey.value.trim();
+                        alert('API 키가 설정되었습니다.');
+                    }
+                };
+
+                const sendChatMessage = async () => {
+                    if (!chatInput.value.trim() || !openaiApiKey.value) return;
+                    
+                    const userMsg = chatInput.value.trim();
+                    chatMessages.value.push({ role: 'user', content: userMsg });
+                    chatInput.value = '';
+                    isChatLoading.value = true;
+                    scrollToBottom();
+
+                    // 다국어 챗봇 응답 유도를 위한 시스템 프롬프트
+                    const currentLangStr = i18n.global.locale === 'ko' ? 'Korean' : i18n.global.locale === 'en' ? 'English' : i18n.global.locale === 'ja' ? 'Japanese' : 'Chinese';
+
+                    try {
+                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiApiKey.value}` },
+                            body: JSON.stringify({
+                                model: 'gpt-3.5-turbo',
+                                messages: [
+                                    { role: 'system', content: `You are a friendly LocalHub chatbot guiding Busan tourism. Respond shortly and clearly. MUST reply in ${currentLangStr}.` },
+                                    ...chatMessages.value.map(m => ({role: m.role, content: m.content}))
+                                ],
+                                max_tokens: 150
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (response.ok) {
+                            chatMessages.value.push({ role: 'assistant', content: data.choices[0].message.content });
+                        } else { chatMessages.value.push({ role: 'assistant', content: `[에러] ${data.error.message}` }); }
+                    } catch (error) {
+                        chatMessages.value.push({ role: 'assistant', content: '통신 중 에러가 발생했습니다. API 키나 네트워크를 확인해주세요.' });
+                    } finally {
+                        isChatLoading.value = false;
+                        scrollToBottom();
+                    }
+                };
+
+                const scrollToBottom = () => {
+                    nextTick(() => {
+                        const container = document.getElementById('chat-messages');
+                        if (container) container.scrollTop = container.scrollHeight;
+                    });
+                };
+
+                return {
+                    currentView, showLangMenu, changeLanguage,
+                    selectedCategory, infoData, filteredInfoData, categoryStats,
+                    posts, searchQuery, filteredPosts, viewPost, activePost, editMode, writeForm, savePost, formatDate,
+                    handleImageUpload, toggleLike, toggleBookmark, hasLiked, hasBookmarked,
+                    showPasswordModal, modalPassword, pwError, openPasswordModal, confirmPassword,
+                    isChatOpen, chatInput, chatMessages, isChatLoading, sendChatMessage, openaiApiKey, tempApiKey, setApiKey
+                };
+            }
+        });
+
+        app.use(i18n);
+        app.mount('#app');
+    </script>
+</body>
+</html>

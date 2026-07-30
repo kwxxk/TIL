@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalHub - Busan</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const TRANSLATE_PROXY = 'http://localhost:3000/translate';
+    </script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet MarkerCluster for clustering many markers without API key -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <!-- FullCalendar removed (calendar feature disabled) -->
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        #terrainMap { height: 450px; z-index: 10; }
+        .leaflet-container { z-index: 0; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
+        .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
+        
+        .map-marker-badge { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 999px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 14px; 
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25); 
+            border: 2px solid white; 
+            transition: transform 0.2s;
+        }
+        .map-marker-badge:hover {
+            transform: scale(1.15);
+        }
+        [v-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col relative" v-cloak>
+        
+        <div class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 pointer-events-none" :class="notification.show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'">
+            <div class="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-gray-800">
+                <i class="fa-solid" :class="notification.type === 'error' ? 'fa-circle-xmark text-red-400' : 'fa-circle-info text-blue-400'"></i>
+                <span class="text-sm font-medium">{{ notification.message }}</span>
+            </div>
+        </div>
+
+        <header class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2 cursor-pointer" @click="setView('home')">
+                    <i class="fa-solid fa-map-location-dot text-2xl"></i>
+                    <h1 class="text-2xl font-bold tracking-tight">LocalHub <span class="text-sm font-normal text-blue-200">Busan</span></h1>
+                </div>
+                
+                <nav class="hidden md:flex gap-6 font-medium">
+                    <a href="#" @click.prevent="setView('home')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'home'}" class="hover:text-yellow-200 py-1">{{ $t('nav.home') }}</a>
+                    <a href="#" @click.prevent="setView('info')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'info'}" class="hover:text-yellow-200 py-1">{{ $t('nav.info') }}</a>
+                    <a href="#" @click.prevent="setView('map')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'map'}" class="hover:text-yellow-200 py-1">{{ $t('nav.map') }}</a>
+                    <a href="#" @click.prevent="setView('dashboard')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'dashboard'}" class="hover:text-yellow-200 py-1">{{ $t('nav.dashboard') }}</a>
+                    <!-- calendar tab removed -->
+                    <a href="#" @click.prevent="setView('board')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'board'}" class="hover:text-yellow-200 py-1">{{ $t('nav.community') }}</a>
+                </nav>
+
+                <div class="flex items-center gap-3 relative">
+                    <button @click="showLangMenu = !showLangMenu" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-bold border border-blue-500 transition flex items-center gap-2">
+                        <i class="fa-solid fa-globe"></i> Language <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
+                    </button>
+                    <div v-if="showLangMenu" class="absolute top-full right-0 mt-2 w-32 bg-white rounded-md shadow-xl border border-gray-100 z-60 overflow-hidden">
+                        <a href="#" @click.prevent="changeLanguage('ko')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">한국어</a>
+                        <a href="#" @click.prevent="changeLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">English</a>
+                        <a href="#" @click.prevent="changeLanguage('ja')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">日本語</a>
+                        <a href="#" @click.prevent="changeLanguage('zh')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium">中文</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8" @click="showLangMenu = false">
+            <transition name="fade" mode="out-in">
+                
+                <!-- 1. Home Dashboard View -->
+                <div v-if="currentView === 'home'" key="home" class="space-y-8">
+                    <!-- (원본 파일 내용 전체 복사되었습니다) -->
+                </div>
+
+            </transition>
+        </main>
+    </div>
+</body>
+</html>

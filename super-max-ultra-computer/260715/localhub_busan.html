@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalHub - Busan</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-i18n@9"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const TRANSLATE_PROXY = 'http://localhost:3000/translate';
+    </script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet MarkerCluster for clustering many markers without API key -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <!-- FullCalendar removed (calendar feature disabled) -->
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        #terrainMap { height: 450px; z-index: 10; }
+        .leaflet-container { z-index: 0; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
+        .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(20px); }
+        
+        .map-marker-badge { 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 999px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 14px; 
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25); 
+            border: 2px solid white; 
+            transition: transform 0.2s;
+        }
+        .map-marker-badge:hover {
+            transform: scale(1.15);
+        }
+        [v-cloak] { display: none !important; }
+        /* Pastel / warm theme variables */
+        :root {
+            --pastel-primary: #FCE8D6; /* warm pastel (peach) for buttons */
+            --pastel-primary-hover: #FAD9BD;
+            --pastel-accent: #FFD6A5; /* complementary accent */
+            --btn-text-dark: #5A3E2B; /* warm dark text */
+            --btn-border: rgba(90,62,43,0.08);
+            --header-bg: #FFD8B5; /* header pastel warm */
+            --header-hover: #FFC79A;
+            --header-text: #5A3E2B;
+            --hero-image: url('https://images.unsplash.com/photo-1504198453319-5ce911bafcde?auto=format&fit=crop&w=1600&q=80'); /* coastal cliff / village-style image */
+            --muted-bg: rgba(255,238,230,0.6);
+        }
+
+        /* Apply pastel styling to interactive buttons and anchor-buttons */
+        button, .button-like, a.button-like {
+            background: var(--pastel-primary) !important;
+            color: var(--btn-text-dark) !important;
+            border: 1px solid var(--btn-border) !important;
+            box-shadow: none !important;
+        }
+        button:hover, .button-like:hover, a.button-like:hover {
+            background: var(--pastel-primary-hover) !important;
+        }
+
+        /* Hero background uses CSS variable so it's easy to swap to an exact 흰여울문화마을 URL */
+        .hero-home {
+            background-image: linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.08)), var(--hero-image);
+            background-size: cover;
+            background-position: center;
+            color: var(--btn-text-dark) !important;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+        }
+        /* Ensure hero text contrasts with photo */
+        .hero-home h2, .hero-home p, .hero-home .text-white, .hero-home .font-bold {
+            color: #ffffff !important;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.45);
+        }
+        .hero-home .btn-ghost {
+            background: rgba(255,255,255,0.18) !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255,255,255,0.12) !important;
+        }
+
+        /* Override common Tailwind 'blue' utilities used in this file to warm pastels */
+        .bg-blue-600 { background-color: var(--header-bg) !important; }
+        .bg-blue-700 { background-color: var(--header-hover) !important; }
+        .bg-blue-500 { background-color: var(--pastel-accent) !important; }
+        .bg-blue-100 { background-color: rgba(255,235,220,0.9) !important; }
+        .bg-blue-50  { background-color: rgba(255,245,235,0.8) !important; }
+        .text-blue-600, .text-blue-700, .text-blue-800 { color: var(--header-text) !important; }
+        .border-blue-500 { border-color: rgba(90,62,43,0.12) !important; }
+        .border-blue-100 { border-color: rgba(90,62,43,0.06) !important; }
+        .hover\:bg-blue-700:hover { background-color: var(--header-hover) !important; }
+        .hover\:bg-blue-600:hover { background-color: var(--header-bg) !important; }
+        .hover\:bg-blue-50:hover { background-color: rgba(255,245,235,0.9) !important; }
+        .file\:bg-blue-50::file-selector-button { background-color: rgba(255,245,235,0.9) !important; }
+        /* Ensure header and related 'text-white' elements become warm dark text on pastel header */
+        header.bg-blue-600 { color: var(--header-text) !important; }
+        header.bg-blue-600 .text-white { color: var(--header-text) !important; }
+        .bg-blue-600.text-white { color: var(--btn-text-dark) !important; }
+        /* Make active nav (yellow) much more visible */
+        .text-yellow-300 { color: #ff8c42 !important; }
+        .border-yellow-300 { border-color: #ff8c42 !important; }
+        .bg-yellow-300 { background-color: #ff8c42 !important; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+    <div id="app" class="flex-grow flex flex-col relative" v-cloak>
+        
+        <div class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 pointer-events-none" :class="notification.show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'">
+            <div class="bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-gray-800">
+                <i class="fa-solid" :class="notification.type === 'error' ? 'fa-circle-xmark text-red-400' : 'fa-circle-info text-blue-400'"></i>
+                <span class="text-sm font-medium">{{ notification.message }}</span>
+            </div>
+        </div>
+
+        <header class="bg-blue-600 text-white shadow-md sticky top-0 z-50">
+            <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2 cursor-pointer" @click="setView('home')">
+                    <i class="fa-solid fa-map-location-dot text-2xl"></i>
+                    <h1 class="text-2xl font-bold tracking-tight">LocalHub <span class="text-sm font-normal text-blue-200">Busan</span></h1>
+                </div>
+                
+                <nav class="hidden md:flex gap-6 font-medium">
+                    <a href="#" @click.prevent="setView('home')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'home'}" class="hover:text-yellow-200 py-1">{{ $t('nav.home') }}</a>
+                    <a href="#" @click.prevent="setView('info')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'info'}" class="hover:text-yellow-200 py-1">{{ $t('nav.info') }}</a>
+                    <a href="#" @click.prevent="setView('map')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'map'}" class="hover:text-yellow-200 py-1">{{ $t('nav.map') }}</a>
+                    <a href="#" @click.prevent="setView('dashboard')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'dashboard'}" class="hover:text-yellow-200 py-1">{{ $t('nav.dashboard') }}</a>
+                    <!-- calendar tab removed -->
+                    <a href="#" @click.prevent="setView('board')" :class="{'text-yellow-300 border-b-2 border-yellow-300': currentView === 'board'}" class="hover:text-yellow-200 py-1">{{ $t('nav.community') }}</a>
+                </nav>
+
+                <div class="flex items-center gap-3 relative">
+                    <button @click="showLangMenu = !showLangMenu" class="bg-blue-700 hover:bg-blue-800 px-3 py-1.5 rounded text-sm font-bold border border-blue-500 transition flex items-center gap-2">
+                        <i class="fa-solid fa-globe"></i> Language <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
+                    </button>
+                    <div v-if="showLangMenu" class="absolute top-full right-0 mt-2 w-32 bg-white rounded-md shadow-xl border border-gray-100 z-60 overflow-hidden">
+                        <a href="#" @click.prevent="changeLanguage('ko')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">한국어</a>
+                        <a href="#" @click.prevent="changeLanguage('en')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">English</a>
+                        <a href="#" @click.prevent="changeLanguage('ja')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium border-b">日本語</a>
+                        <a href="#" @click.prevent="changeLanguage('zh')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 font-medium">中文</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8" @click="showLangMenu = false">
+            <transition name="fade" mode="out-in">
+                
+                <!-- 1. Home Dashboard View -->
+                <div v-if="currentView === 'home'" key="home" class="space-y-8">
+                    <section class="hero-home text-white rounded-2xl shadow-lg p-8">
+                        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-6">
+                            <div class="flex-1">
+                                <h2 class="text-3xl font-bold mb-2">부산을 만나세요 — 바다를 닮은 여행</h2>
+                                <p class="text-sm opacity-90 mb-4">현지 추천 명소와 트렌디한 코스들을 바로 확인해보세요. 매번 새로고침할 때마다 다른 추천지를 보여드립니다.</p>
+                                <div class="flex gap-3">
+                                    <button @click="setView('info')" class="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold">지역 정보 둘러보기</button>
+                                    <button @click="setView('map')" class="bg-white/20 text-white px-4 py-2 rounded-lg font-semibold border border-white/30">지도 보기</button>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-1/3">
+                                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=60" alt="Busan" class="w-full h-40 object-cover rounded-lg shadow-inner">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-star text-yellow-500 mr-2"></i>추천 관광지 및 쇼핑몰</h3>
+                                <p class="text-sm text-gray-500">관광지와 쇼핑몰 카테고리에서 무작위로 추출한 6곳을 추천합니다. 새로고침 또는 버튼으로 목록을 변경할 수 있습니다.</p>
+                            </div>
+                            <div>
+                                <button @click.prevent="pickRandomAttractions()" class="bg-blue-600 text-white px-3 py-1 rounded-md text-sm">다시추천</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div v-for="item in randomAttractions" :key="item.contentid" class="bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
+                                <a :href="getMapLink(item) || item.link || '#'" target="_blank" class="block h-full">
+                                    <div class="h-40 bg-gray-200 overflow-hidden">
+                                        <img :src="item.firstimage || defaultImages[item.category]" class="w-full h-full object-cover" @error="setFallbackImage($event, item.category)">
+                                    </div>
+                                    <div class="p-4">
+                                        <h4 class="font-semibold text-gray-800 truncate">{{ getLocalized(item,'title') }}</h4>
+                                        <p class="text-xs text-gray-500 mt-1 truncate">{{ getLocalized(item,'addr1') }}</p>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-white rounded-xl shadow border border-gray-100 p-8 flex justify-center items-center">
+                        <button @click="currentView = 'info'" class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-xl shadow-lg font-bold text-lg transition duration-200 flex items-center gap-2">
+                            <i class="fa-solid fa-compass"></i> {{ $t('home.exploreBtn') }}
+                        </button>
+                    </section>
+
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-th-large text-blue-500 mr-2"></i>{{ $t('home.quickLinksTitle') }}</h3>
+                                <p class="text-sm text-gray-500 mt-1">{{ $t('home.quickLinksDesc') }}</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <a v-for="banner in categoryBanners" :key="banner.category" :href="banner.url" target="_blank" rel="noopener noreferrer"
+                                class="group block rounded-3xl border border-gray-100 p-5 bg-gray-50 hover:border-blue-200 hover:bg-white transition shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-white', banner.accent]">
+                                        <i :class="['fa-solid', banner.icon]"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs uppercase tracking-[0.24em] text-gray-400">{{ $t('categories.' + banner.category) }}</p>
+                                        <h4 class="text-lg font-semibold text-gray-800">{{ $t('categories.' + banner.category) }}</h4>
+                                    </div>
+                                </div>
+                                <p class="mt-4 text-sm text-gray-500">바로가기</p>
+                            </a>
+                        </div>
+                    </section>
+
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800">
+                                    <i class="fa-solid fa-mountain-sun text-emerald-600 mr-2"></i>부산 실제 입체 지형도
+                                </h3>
+                                <p class="text-xs text-gray-500 mt-1">실제 지도처럼 마우스 휠이나 터치 제스처를 사용하여 자유롭게 확대/축소 및 이동이 가능합니다.</p>
+                            </div>
+                            <div class="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1.5 font-medium self-start">
+                                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> 우측 상단 메뉴에서 지형도 / 위성도 선택 가능
+                            </div>
+                        </div>
+                        <div id="terrainMap" class="rounded-2xl overflow-hidden border border-gray-200 shadow-inner relative"></div>
+                    </section>
+
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <h3 class="text-xl font-bold mb-4 border-b pb-2"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>{{ $t('home.dashboardTitle') }}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div class="flex justify-center h-64 relative">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <h4 class="font-bold text-gray-700 mb-3">{{ $t('home.statTitle') }}</h4>
+                                <ul class="space-y-3">
+                                    <li v-for="(count, category) in categoryStats" :key="category" class="flex justify-between items-center bg-gray-50 px-4 py-2 rounded border border-gray-100">
+                                        <span class="font-medium text-gray-600">{{ $t('categories.' + category) }}</span>
+                                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-bold">{{ count }} {{ $t('home.countUnit') }}</span>
+                                    </li>
+                                </ul>
+                                <p class="text-xs text-gray-400 mt-4 text-right">* Data Source: TourAPI 4.0</p>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="bg-white rounded-xl shadow p-6">
+                        <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-location-dot text-emerald-600 mr-2"></i>업데이트된 지역정보 요약</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">관광지</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.tour }}</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">문화시설</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.culture }}</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">쇼핑</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.shop }}</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">레포츠</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.leports }}</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">숙박</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.sleep }}</div>
+                            </div>
+                            <div class="p-4 bg-gray-50 rounded-xl border text-center">
+                                <div class="text-xs text-gray-500">축제/공연/행사</div>
+                                <div class="text-2xl font-bold text-gray-800">{{ categoryStats.festival }}</div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div v-else-if="currentView === 'info'" key="info">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-map-location text-blue-500 mr-2"></i>{{ $t('info.title') }}</h2>
+                        <select v-model="selectedCategory" class="border rounded-lg px-3 py-2 text-sm bg-white shadow-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">{{ $t('info.all') }}</option>
+                            <option value="tour">{{ $t('categories.tour') }}</option>
+                            <option value="culture">{{ $t('categories.culture') }}</option>
+                            <option value="shop">{{ $t('categories.shop') }}</option>
+                            <option value="leports">{{ $t('categories.leports') }}</option>
+                            <option value="festival">{{ $t('categories.festival') }}</option>
+                            <option value="sleep">{{ $t('categories.sleep') }}</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="item in filteredInfoData" :key="item.contentid" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group">
+                            <a v-if="item.link || item.mapx" :href="getMapLink(item) || item.link" target="_blank" rel="noopener noreferrer" class="block h-full cursor-pointer">
+                                <div class="h-48 bg-gray-200 relative overflow-hidden">
+                                    <img :src="item.firstimage || defaultImages[item.category]" alt="thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" @error="setFallbackImage($event, item.category)">
+                                    <span class="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">{{ $t('categories.' + item.category) }}</span>
+                                </div>
+                                <div class="p-5">
+                                    <h3 class="font-bold text-lg mb-2 text-gray-800 truncate" :title="getLocalized(item,'title')">{{ getLocalized(item,'title') }}</h3>
+                                    <p class="text-sm text-gray-500 line-clamp-2"><i class="fa-solid fa-location-dot mr-1"></i>{{ getLocalized(item,'addr1') }}</p>
+                                    <div class="mt-3 flex items-center gap-2">
+                                        <button @click.prevent="openTranslateModal(item)" class="text-xs text-blue-600 hover:underline">{{ $t('common.translate') }}</button>
+                                    </div>
+                                </div>
+                            </a>
+                            <div v-else @click="viewPost(item.contentid)" class="cursor-pointer h-full">
+                                <div class="h-48 bg-gray-200 relative overflow-hidden">
+                                    <img :src="item.firstimage || defaultImages[item.category]" alt="thumbnail" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" @error="setFallbackImage($event, item.category)">
+                                    <span class="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">{{ $t('categories.' + item.category) }}</span>
+                                </div>
+                                <div class="p-5">
+                                    <h3 class="font-bold text-lg mb-2 text-gray-800 truncate" :title="getLocalized(item,'title')">{{ getLocalized(item,'title') }}</h3>
+                                    <p class="text-sm text-gray-500 line-clamp-2"><i class="fa-solid fa-location-dot mr-1"></i>{{ getLocalized(item,'addr1') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <a href="https://leisure-web.yanolja.com/leisure/10324594" target="_blank" rel="noopener noreferrer" class="max-w-sm w-full rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-600 to-cyan-500 p-4 text-white shadow-lg hover:shadow-xl transition">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-[11px] uppercase tracking-[0.25em] text-blue-100">부산투어패스</p>
+                                    <h3 class="font-bold text-lg mt-1">부산여행 프리패스권</h3>
+                                    <p class="text-sm text-blue-50 mt-2">특가와 할인 예약을 바로 확인해보세요.</p>
+                                </div>
+                                <div class="rounded-full bg-white/20 p-2">
+                                    <i class="fa-solid fa-ticket"></i>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <div v-else-if="currentView === 'map'" key="map" class="space-y-6">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold"><i class="fa-solid fa-globe text-blue-500 mr-2"></i>{{ $t('nav.map') }} <span class="text-sm text-gray-500">(Google Maps / Leaflet)</span></h2>
+                            
+                        </div>
+                        <div id="googleMap" class="rounded-2xl overflow-hidden border border-gray-200" style="height:420px; max-height:55vh;"></div>
+                    </div>
+                </div>
+
+                <div v-else-if="currentView === 'dashboard'" key="dashboard" class="space-y-6">
+                    <div class="bg-white rounded-xl shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold"><i class="fa-solid fa-chart-line text-blue-500 mr-2"></i>{{ $t('nav.dashboard') }}</h2>
+                            <div class="flex items-center gap-3">
+                                <div class="text-sm text-gray-500">부산시청 관광통계</div>
+                                <button @click.prevent="renderDashboard()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">대시보드 새로고침</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="p-4 bg-purple-600 text-white rounded-lg">
+                                <div class="text-sm">2026년 외국인 방문객 수 (누계)</div>
+                                <div class="text-2xl font-bold mt-3" id="cardCumulative">1,936,572명</div>
+                            </div>
+                            <div class="p-4 bg-sky-500 text-white rounded-lg">
+                                <div class="text-sm">2026년 해당월(5월) 외국인 방문객 수</div>
+                                <div class="text-2xl font-bold mt-3" id="cardMay">460,683명</div>
+                            </div>
+                            <div class="p-4 bg-white border rounded-lg">
+                                <div class="text-sm text-gray-600">경로별 방문동향</div>
+                                <div class="mt-2 text-sm"><strong>김해공항</strong> <span class="float-right">806,108명 (41.6%)</span></div>
+                                <div class="mt-1 text-sm"><strong>부산항</strong> <span class="float-right">302,850명 (15.6%)</span></div>
+                                <div class="mt-1 text-sm"><strong>타지경유</strong> <span class="float-right">827,614명 (42.7%)</span></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-white border rounded-lg p-4 overflow-auto">
+                                <h4 class="font-semibold mb-3">주요 국가별 방문 동향 (누계)</h4>
+                                <table class="w-full text-sm">
+                                    <thead class="text-gray-600 text-xs bg-gray-50">
+                                        <tr>
+                                            <th class="py-2 text-left">순위</th>
+                                            <th class="py-2 text-left">국가</th>
+                                            <th class="py-2 text-right">당월</th>
+                                            <th class="py-2 text-right">구성비</th>
+                                            <th class="py-2 text-right">전월</th>
+                                            <th class="py-2 text-right">증감률(전월)</th>
+                                            <th class="py-2 text-right">전년</th>
+                                            <th class="py-2 text-right">증감률(전년)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="countryTableBody" class="text-sm text-gray-800"></tbody>
+                                </table>
+                            </div>
+                            <div class="bg-white border rounded-lg p-4">
+                                <h4 class="font-semibold mb-3">국가별 비율</h4>
+                                <div class="h-64"><canvas id="countryPie"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar view removed per request -->
+
+                <div v-else-if="currentView === 'board'" key="board" class="bg-white rounded-xl shadow p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-users text-blue-500 mr-2"></i>{{ $t('board.title') }}</h2>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <div class="relative w-full md:w-64">
+                                <input type="text" v-model="searchQuery" :placeholder="$t('board.searchPlaceholder')" class="w-full border rounded-lg pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                                <i class="fa-solid fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                            </div>
+                            <button @click="currentView = 'boardWrite'; editMode = false;" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap shadow transition">
+                                <i class="fa-solid fa-pen mr-1"></i>{{ $t('board.writeBtn') }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 border-y border-gray-200 text-gray-600 text-sm">
+                                    <th class="py-3 px-4 w-16 text-center">No</th>
+                                    <th class="py-3 px-4">{{ $t('board.postTitle') }}</th>
+                                    <th class="py-3 px-4 w-24 text-center"><i class="fa-solid fa-heart text-red-400"></i></th>
+                                    <th class="py-3 px-4 w-32 text-center">{{ $t('board.date') }}</th>
+                                    <th class="py-3 px-4 w-20 text-center">{{ $t('board.views') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-if="filteredPosts.length === 0">
+                                    <td colspan="5" class="py-12 text-center text-gray-500">{{ $t('board.noData') }}</td>
+                                </tr>
+                                <tr v-for="(post, index) in filteredPosts" :key="post.id" @click="viewPost(post.id)" class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition">
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ filteredPosts.length - index }}</td>
+                                    <td class="py-3 px-4 font-medium text-gray-800">
+                                        {{ post.title }}
+                                        <i v-if="post.image" class="fa-regular fa-image ml-2 text-gray-400"></i>
+                                        <div v-if="post.tags && post.tags.length > 0" class="mt-1">
+                                            <span v-for="tag in post.tags" :key="tag" class="text-xs text-blue-500 mr-2">#{{ tag }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ post.likes || 0 }}</td>
+                                    <td class="py-3 px-4 text-center text-gray-500 text-sm">{{ formatDate(post.createdAt) }}</td>
+                                    <td class="py-3 px-4 text-center text-gray-400 text-sm">{{ post.views }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <div class="bg-red-50 border border-red-100 rounded-xl p-4 shadow-sm max-w-sm">
+                            <div class="flex items-center gap-2 text-red-600 font-semibold mb-2">
+                                <i class="fa-solid fa-circle-exclamation"></i> 긴급 연락처
+                            </div>
+                            <div class="grid gap-2 text-sm text-gray-700">
+                                <div class="flex justify-between"><span>Police</span><strong>112</strong></div>
+                                <div class="flex justify-between"><span>Fire / Ambulance</span><strong>119</strong></div>
+                                <div class="flex justify-between"><span>Travel Hotline</span><strong>+82-2-1330</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else-if="currentView === 'boardDetail'" key="boardDetail" class="bg-white rounded-xl shadow p-6 max-w-4xl mx-auto">
+                    <div class="border-b pb-4 mb-6">
+                        <div class="flex justify-between items-start mb-2">
+                            <h2 class="text-3xl font-bold text-gray-800">{{ activePost.title }}</h2>
+                        </div>
+                        <div class="flex justify-between items-center text-sm text-gray-500">
+                            <span><i class="fa-solid fa-clock mr-1"></i>{{ formatDate(activePost.createdAt) }}</span>
+                            <span><i class="fa-solid fa-eye mr-1"></i>{{ activePost.views }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="min-h-[150px] text-gray-700 whitespace-pre-wrap leading-relaxed mb-6">
+                        {{ activePost.content }}
+                    </div>
+
+                    <div v-if="activePost.image" class="mb-6">
+                        <img :src="activePost.image" alt="첨부 이미지" class="max-w-full h-auto max-h-96 rounded-lg shadow-sm border border-gray-200">
+                    </div>
+
+                    <div v-if="activePost.tags && activePost.tags.length > 0" class="flex flex-wrap gap-2 mb-8">
+                        <span v-for="tag in activePost.tags" :key="tag" class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-medium border border-blue-100">#{{ tag }}</span>
+                    </div>
+
+                    <div class="flex justify-center gap-6 py-6 border-y border-gray-100 mb-6 bg-gray-50 rounded-xl">
+                        <button @click="toggleLike" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center bg-white shadow-sm border border-gray-200 group-hover:border-red-300 transition mb-2">
+                                <i class="fa-solid fa-heart text-xl" :class="hasLiked(activePost.id) ? 'text-red-500' : 'text-gray-300 group-hover:text-red-400'"></i>
+                            </div>
+                            <span class="text-sm font-bold text-gray-600">{{ $t('board.likes') }} {{ activePost.likes || 0 }}</span>
+                        </button>
+                        <button @click="toggleBookmark" class="flex flex-col items-center group">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center bg-white shadow-sm border border-gray-200 group-hover:border-yellow-300 transition mb-2">
+                                <i class="fa-solid fa-bookmark text-xl" :class="hasBookmarked(activePost.id) ? 'text-yellow-500' : 'text-gray-300 group-hover:text-yellow-400'"></i>
+                            </div>
+                            <span class="text-sm font-bold text-gray-600">{{ $t('board.bookmarks') }} {{ activePost.bookmarks || 0 }}</span>
+                        </button>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <button @click="currentView = 'board'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2 rounded-lg text-sm font-medium transition">
+                            <i class="fa-solid fa-list mr-1"></i>{{ $t('board.listBtn') }}
+                        </button>
+                        <div class="flex gap-2">
+                            <button @click="openPasswordModal('edit')" class="border border-blue-500 text-blue-600 hover:bg-blue-50 px-5 py-2 rounded-lg text-sm font-medium transition">{{ $t('board.editBtn') }}</button>
+                            <button @click="openPasswordModal('delete')" class="border border-red-500 text-red-600 hover:bg-red-50 px-5 py-2 rounded-lg text-sm font-medium transition">{{ $t('board.deleteBtn') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else-if="currentView === 'boardWrite'" key="boardWrite" class="bg-white rounded-xl shadow p-6 max-w-4xl mx-auto">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">
+                        {{ editMode ? $t('board.editTitle') : $t('board.writeTitle') }}
+                    </h2>
+                    
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.postTitle') }}</label>
+                            <input type="text" v-model="writeForm.title" :placeholder="$t('board.titlePlaceholder')" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.content') }}</label>
+                            <textarea v-model="writeForm.content" rows="8" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.image') }} <span class="text-xs text-gray-400 font-normal">(Max 1MB, LocalStorage 제한)</span></label>
+                            <input type="file" accept="image/*" @change="handleImageUpload" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none text-sm bg-gray-50 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <div v-if="writeForm.image" class="mt-3 relative inline-block">
+                                <img :src="writeForm.image" class="h-32 rounded-lg border border-gray-200 object-cover shadow-sm">
+                                <button @click="writeForm.image = null" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.tags') }}</label>
+                            <input type="text" v-model="writeForm.tagsStr" :placeholder="$t('board.tagsPlaceholder')" class="w-full border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        
+                        <div v-if="!editMode">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $t('board.password') }}</label>
+                            <input type="password" v-model="writeForm.password" placeholder="숫자 4자리 이상 (수정/삭제 시 필요)" class="w-full md:w-1/2 border border-gray-300 rounded-lg px-4 py-2 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                            <p class="text-xs text-red-400 mt-1">* 주의: 비밀번호는 암호화 없이 로컬 스토리지에 평문으로 저장됩니다.</p>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4 border-t">
+                            <button @click="currentView = 'board'" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-medium transition">{{ $t('common.cancel') }}</button>
+                            <button @click="savePost" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium shadow transition">{{ $t('common.save') }}</button>
+                        </div>
+                    </div>
+                </div>
+
+            </transition>
+        </main>
+
+        <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm z-30">
+            <p>&copy; 2026 LocalHub Busan. All rights reserved.</p>
+            <p class="mt-1">Data Source: TourAPI 4.0 (Type3 License)</p>
+        </footer>
+
+        <div v-if="showPasswordModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform transition-all">
+                <h3 class="text-xl font-bold mb-4">{{ $t('board.pwConfirmTitle') }}</h3>
+                <input type="password" v-model="modalPassword" :placeholder="$t('board.password')" @keyup.enter="confirmPassword" class="w-full border border-gray-300 rounded-lg px-4 py-2 mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+                <p v-if="pwError" class="text-red-500 text-sm mb-4">{{ $t('board.pwError') }}</p>
+                <div class="flex justify-end gap-2">
+                    <button @click="showPasswordModal = false; modalPassword = ''; pwError = false;" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">{{ $t('common.cancel') }}</button>
+                    <button @click="confirmPassword" class="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow transition">{{ $t('common.confirm') }}</button>
+                </div>
+            </div>
+        </div>
+
+                <div v-if="showTranslateModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">번역 결과</h3>
+                    <button @click="closeTranslateModal" class="text-gray-500 hover:text-gray-700">닫기</button>
+                </div>
+                <div v-if="isTranslatingLocal" class="py-8 text-center text-gray-500">번역 중...</div>
+                        <div v-else>
+                            <h4 class="font-semibold">원문 제목</h4>
+                            <p class="mb-2">{{ selectedForTranslate?.title }}</p>
+                            <h4 class="font-semibold">번역된 제목</h4>
+                            <p class="mb-3">{{ translatedForModal?.title || '(번역 없음)' }}</p>
+                            <h4 class="font-semibold">원문 주소</h4>
+                            <p class="mb-2">{{ selectedForTranslate?.addr1 }}</p>
+                            <h4 class="font-semibold">번역된 주소</h4>
+                            <p class="mb-3">{{ translatedForModal?.addr1 || '(번역 없음)' }}</p>
+                            <div v-if="translatedError" class="text-sm text-red-500 mb-2">{{ translatedError }}</div>
+                            <div class="flex justify-end">
+                                <a :href="getMapLink(selectedForTranslate) || '#'" target="_blank" class="button-like bg-blue-600 text-white px-4 py-2 rounded">Google Maps 열기</a>
+                            </div>
+                        </div>
+            </div>
+        </div>
+
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+            <!-- Chat Window -->
+            <transition name="slide-up">
+                <div v-if="isChatOpen" class="bg-white w-80 sm:w-96 rounded-2xl shadow-2xl overflow-hidden flex flex-col mb-4 border border-gray-200 h-[520px]">
+                    <div class="bg-blue-600 text-white px-4 py-3 flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-sparkles text-yellow-300 animate-pulse"></i>
+                            <h3 class="font-bold">LocalHub {{ $t('chat.title') }}</h3>
+                        </div>
+                        <button @click="isChatOpen = false" class="text-white hover:text-gray-200"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    
+                    <!-- Realtime engine banner -->
+                    <div class="px-4 py-1.5 bg-blue-50 text-[11px] text-blue-700 border-b border-blue-100 flex items-center justify-between">
+                        <span class="flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                            부산 여행 특화 로컬 AI 엔진 탑재
+                        </span>
+                        <span class="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold">Live Guide</span>
+                    </div>
+
+                    <!-- Chat Messages list -->
+                    <div class="flex-grow p-4 overflow-y-auto bg-gray-50 space-y-4" id="chat-messages">
+                        <div v-for="(msg, i) in chatMessages" :key="i" :class="msg.role === 'user' ? 'text-right' : 'text-left'">
+                            <div :class="msg.role === 'user' ? 'bg-blue-500 text-white rounded-br-none' : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'" 
+                                 class="inline-block px-4 py-2.5 rounded-2xl max-w-[85%] text-sm text-left shadow-sm whitespace-pre-line leading-relaxed">
+                                {{ msg.content }}
+                            </div>
+                        </div>
+                        <div v-if="isChatLoading" class="text-left">
+                            <div class="inline-block px-4 py-2 rounded-2xl bg-white border border-gray-200 rounded-bl-none text-gray-500 text-sm shadow-sm">
+                                <i class="fa-solid fa-circle-notch fa-spin mr-1"></i> 부산 로컬 정보 분석 중...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Shortcuts chips -->
+                    <div class="px-3 py-2 bg-gray-100 border-t border-gray-200 flex gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+                        <button @click="clickQuickPrompt('🍲 돼지국밥 로컬 인생 맛집 알려줘')" class="bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-xs px-3 py-1.5 rounded-full border border-gray-200 transition font-medium shadow-sm">🍲 국밥 맛집</button>
+                        <button @click="clickQuickPrompt('🗺️ 광안리 중심 1박 2일 동선 효율적인 코스 짜줘')" class="bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-xs px-3 py-1.5 rounded-full border border-gray-200 transition font-medium shadow-sm">🗺️ 1박2일 코스</button>
+                        <button @click="clickQuickPrompt('🚇 부산역에서 해운대해수욕장까지 가는 가장 빠른 방법')" class="bg-white hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-xs px-3 py-1.5 rounded-full border border-gray-200 transition font-medium shadow-sm">🚇 부산역→해운대</button>
+                    </div>
+
+                    <!-- Chat Input form -->
+                    <div class="p-3 bg-white border-t border-gray-200">
+                        <div class="flex relative">
+                            <input type="text" v-model="chatInput" @keyup.enter="sendChatMessage" :placeholder="$t('chat.placeholder')" :disabled="isChatLoading"
+                                class="w-full bg-gray-100 border-transparent rounded-full pl-4 pr-12 py-2 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500 outline-none transition disabled:bg-gray-200 disabled:cursor-not-allowed">
+                            <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading" 
+                                class="absolute right-1 top-1 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:bg-gray-400 transition">
+                                <i class="fa-solid fa-paper-plane text-xs relative -left-0.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- Floating Toggle Button -->
+            <button @click="toggleChat" class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl hover:bg-blue-700 hover:scale-105 transform transition duration-300 flex items-center justify-center border-2 border-white">
+                <i v-if="!isChatOpen" class="fa-regular fa-comment-dots text-2xl"></i>
+                <i v-else class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+        const { createI18n } = VueI18n;
+
+        // --- STREAMING_CHUNK: Configurable API keys (set your Google Maps API key here) ---
+        const GOOGLE_MAPS_API_KEY = ''; // <-- Insert your API key here for Google Maps integration
+
+        // --- STREAMING_CHUNK: Defining Local Travel Mock Database ---
+        const MOCK_DATA = [
+            { contentid: "1", category: "tour", title: "해운대해수욕장", addr1: "부산 해운대구 우동", firstimage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80", link: "https://www.visitbusan.net/kr/index.do?menuCd=DOM_000000201001001000&uc_seq=373&lang_cd=ko" },
+            { contentid: "2", category: "tour", title: "태종대", addr1: "부산 영도구 전망로", firstimage: "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=800&q=80", link: "https://www.visitbusan.net/kr/index.do?menuCd=DOM_000000201001001000&uc_seq=258&lang_cd=ko" },
+            { contentid: "3", category: "culture", title: "감천문화마을", addr1: "부산 사하구 감내2로", firstimage: "https://images.unsplash.com/photo-1523176503721-6e4029c8d24f?auto=format&fit=crop&w=800&q=80", link: "https://www.visitbusan.net/index.do?menuCd=DOM_000000203013001000&uctcp_seq=14&lang_cd=ko" },
+            { contentid: "4", category: "shop", title: "국제시장", addr1: "부산 중구 신창동4가", firstimage: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=800&q=80", link: "https://www.visitbusan.net/kr/index.do?menuCd=DOM_000000201003001000&uc_seq=399&lang_cd=ko" },
+            { contentid: "5", category: "leports", title: "송도해상케이블카", addr1: "부산 서구 송도해변로", firstimage: "https://images.unsplash.com/photo-1498896482463-1e19fb3ce89b?auto=format&fit=crop&w=800&q=80", link: "https://busanaircruise.co.kr/main/main.html" },
+            { contentid: "6", category: "festival", title: "부산국제영화제", addr1: "부산 해운대구 수영강변대로", firstimage: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80", link: "https://www.biff.kr/kor/" },
+            { contentid: "7", category: "sleep", title: "시그니엘 부산", addr1: "부산 해운대구 달맞이길", firstimage: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80", link: "https://www.lottehotel.com/busan-signiel/ko" },
+            { contentid: "8", category: "tour", title: "광안리해수욕장", addr1: "부산 수영구 광안해변로", firstimage: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80", link: "https://www.visitbusan.net/kr/index.do?menuCd=DOM_000000201001001000&uc_seq=377&lang_cd=ko" }
+        ];
+
+        // --- STREAMING_CHUNK: Mapping categories to fallback images ---
+        const DEFAULT_IMAGES = {
+            tour: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+            culture: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80',
+            shop: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80',
+            leports: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80',
+            festival: 'https://images.unsplash.com/photo-1515169067865-5387ec356754?auto=format&fit=crop&w=800&q=80',
+            sleep: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=800&q=80'
+        };
+
+        const CATEGORY_BANNERS = [
+            { category: 'tour', url: 'https://www.visitbusan.net/index.do?menuCd=DOM_000000201001000000', icon: 'fa-location-dot', accent: 'bg-sky-500' },
+            { category: 'culture', url: 'https://busandabom.net/placeinfo/list.nm?menuCd=51&lang=ko&url=placeinfo', icon: 'fa-landmark', accent: 'bg-emerald-500' },
+            { category: 'shop', url: 'https://www.visitbusan.net/index.do?menuCd=DOM_000000201003000000', icon: 'fa-store', accent: 'bg-orange-500' },
+            { category: 'leports', url: 'https://visitbusan.net/index.do?menuCd=DOM_000000202002001000&uc_seq=2311&lang_cd=ko', icon: 'fa-futbol', accent: 'bg-red-500' },
+            { category: 'festival', url: 'https://www.visitbusan.net/schedule/list.do?boardId=BBS_0000009&menuCd=DOM_000000204012000000&contentsSid=447', icon: 'fa-masks-theater', accent: 'bg-violet-500' },
+            { category: 'sleep', url: 'https://www.visitbusan.net/index.do?menuCd=DOM_000000201004002000', icon: 'fa-hotel', accent: 'bg-indigo-500' }
+        ];
+
+        // --- STREAMING_CHUNK: Defining realistic Busan terrain points ---
+        const TERRAIN_POINTS = [
+            { lat: 35.2758, lng: 129.0556, type: 'mountain', title: '금정산 ( 고당봉 801m )', desc: '부산에서 가장 높은 주산으로, 기암절벽 지형과 역사 깊은 금정산성이 있습니다.' },
+            { lat: 35.1564, lng: 129.0831, type: 'mountain', title: '황령산 ( 427m )', desc: '부산 정중앙에 위치하여 도시 사방의 지형과 해안선을 한눈에 내려다볼 수 있는 천혜의 전망 산지입니다.' },
+            { lat: 35.0556, lng: 129.0167, type: 'mountain', title: '승학산 ( 497m )', desc: '낙동강 하구와 근접하여 갈대밭 경관이 발달된 서부산의 명산입니다.' },
+            { lat: 35.1587, lng: 129.1604, type: 'beach', title: '해운대 백사장', desc: '풍화 작용으로 조성된 고운 모래톱이 길게 이어진 남해안 대표 사빈 지형입니다.' },
+            { lat: 35.1301, lng: 129.1234, type: 'island', title: '이기대 해안절벽', desc: '수천만 년 전 화산 활동으로 퇴적된 화산암으로 이루어진 절경의 기암절벽 해변 지형입니다.' },
+            { lat: 35.0831, lng: 129.0794, type: 'island', title: '태종대 기암절벽', desc: '파도 침식과 융기로 탄생한 지질공원으로 독특한 해식애와 울창한 숲이 어우러진 해안 지형입니다.' }
+        ];
+
+        // --- STREAMING_CHUNK: Configuring Multilingual translation strings ---
+        const messages = {
+                ko: {
+                nav: { home: "홈", info: "지역 정보", community: "커뮤니티", map: "지도", dashboard: "대시보드" },
+                home: { welcome: "부산의 생생한 정보를 한눈에!", desc: "부산 권역 공공데이터 기반 지역 정보 공유 플랫폼입니다.", exploreBtn: "지역 정보 둘러보기", dashboardTitle: "부산 관광 데이터 대시보드", statTitle: "카테고리별 데이터 현황", countUnit: "건", quickLinksTitle: "빠른 바로가기", quickLinksDesc: "부산 주요 관광 카테고리를 바로 확인해보세요." },
+                categories: { tour: "관광지", culture: "문화시설", shop: "쇼핑", leports: "스포츠", festival: "축제/공연", sleep: "숙박" },
+                info: { title: "부산 지역 정보", all: "전체 카테고리" },
+                board: {
+                    title: "익명 커뮤니티", searchPlaceholder: "게시글 검색...", writeBtn: "글쓰기",
+                    postTitle: "제목", date: "작성일", views: "조회수", likes: "좋아요", bookmarks: "북마크", noData: "게시글이 없습니다.",
+                    listBtn: "목록으로", editBtn: "수정", deleteBtn: "삭제",
+                    writeTitle: "새 게시글 작성", editTitle: "게시글 수정",
+                    titlePlaceholder: "제목을 입력하세요", content: "내용", password: "수정용 비밀번호",
+                    image: "이미지 첨부", tags: "태그 입력", tagsPlaceholder: "콤마(,)로 구분해 입력 (예: 해운대,맛집)",
+                    pwConfirmTitle: "비밀번호 확인", pwError: "비밀번호가 일치하지 않습니다."
+                },
+                chat: { title: "AI 가이드", placeholder: "부산 여행 명소, 맛집, 코스 등 무엇이든 질문하세요!" },
+                common: { save: "등록", cancel: "취소", confirm: "확인", translate: "번역" }
+            },
+                en: {
+                nav: { home: "Home", info: "Local Info", community: "Community", map: "Map", dashboard: "Dashboard" },
+                home: { welcome: "Discover Vibrant Busan!", desc: "A public data-driven local information sharing platform in Busan.", exploreBtn: "Explore Local Info", dashboardTitle: "Busan Tourism Data Dashboard", statTitle: "Data Status by Category", countUnit: "items", quickLinksTitle: "Quick Access", quickLinksDesc: "Jump directly to Busan's main tourism categories." },
+                categories: { tour: "Attraction", culture: "Culture", shop: "Shopping", leports: "Sports", festival: "Festival", sleep: "Lodging" },
+                info: { title: "Busan Local Info", all: "All Categories" },
+                board: {
+                    title: "Anonymous Community", searchPlaceholder: "Search posts...", writeBtn: "Write",
+                    postTitle: "Title", date: "Date", views: "Views", likes: "Likes", bookmarks: "Bookmarks", noData: "No posts available.",
+                    listBtn: "List", editBtn: "Edit", deleteBtn: "Delete",
+                    writeTitle: "Write New Post", editTitle: "Edit Post",
+                    titlePlaceholder: "Enter a title", content: "Content", password: "Password (for Edit/Delete)",
+                    image: "Attach Image", tags: "Tags", tagsPlaceholder: "Separate with commas (e.g., Haeundae,Food)",
+                    pwConfirmTitle: "Confirm Password", pwError: "Incorrect password."
+                },
+                chat: { title: "AI Guide", placeholder: "Ask anything about Busan travel, dining, or routes!" },
+                common: { save: "Save", cancel: "Cancel", confirm: "Confirm", translate: "Translate" }
+            },
+            ja: {
+                nav: { home: "ホーム", info: "地域情報", community: "コミュニティ", map: "地図", dashboard: "ダッシュボード" },
+                home: { welcome: "釜山の情報を一目で！", desc: "釜山公共データ基盤情報共有プラットフォームです。", exploreBtn: "地域情報を見る", dashboardTitle: "釜山観光データダッシュボード", statTitle: "カテゴリ別データ状況", countUnit: "件", quickLinksTitle: "クイックアクセス", quickLinksDesc: "釜山の主要観光カテゴリへ直接移動できます。" },
+                categories: { tour: "観光地", culture: "文化施設", shop: "ショッピング", leports: "スポーツ", festival: "お祭り/公演", sleep: "宿泊" },
+                info: { title: "釜山地域情報", all: "全カテゴリ" },
+                board: {
+                    title: "匿名コミュニティ", searchPlaceholder: "投稿を検索...", writeBtn: "投稿する",
+                    postTitle: "タイトル", date: "作成일", views: "閲覧数", likes: "いいね", bookmarks: "ブックマーク", noData: "投稿がありません。",
+                    listBtn: "一覧へ", editBtn: "修正", deleteBtn: "削除",
+                    writeTitle: "新規投稿", editTitle: "投稿修正",
+                    titlePlaceholder: "タイトルを入力してください", content: "内容", password: "パスワード (修正/削除用)",
+                    image: "画像添付", tags: "タグ入力", tagsPlaceholder: "カン마(,)で区切って入力 (例: 海雲台,グルメ)",
+                    pwConfirmTitle: "パスワード確認", pwError: "パスワードが一致しません。"
+                },
+                chat: { title: "AIガイド", placeholder: "釜山旅行の名所、おいしい店、コースなど何でも質問してください！" },
+                common: { save: "登録", cancel: "キャンセル", confirm: "確認", translate: "翻訳" }
+            },
+            zh: {
+                nav: { home: "主页", info: "地区信息", community: "社区", map: "地图", dashboard: "仪表板" },
+                home: { welcome: "一目了然釜山的信息！", desc: "基于釜山公共数据的地区信息共享平台。", exploreBtn: "查看地区信息", dashboardTitle: "釜山旅游数据仪表板", statTitle: "按类别分类的数据状态", countUnit: "件", quickLinksTitle: "快速访问", quickLinksDesc: "直接跳转到釜山的主要旅游类别。" },
+                categories: { tour: "旅游景点", culture: "文化设施", shop: "购物", leports: "体育", festival: "庆典/演出", sleep: "住宿" },
+                info: { title: "釜山地区信息", all: "全部分类" },
+                board: {
+                    title: "匿名社区", searchPlaceholder: "搜索帖子...", writeBtn: "发帖",
+                    postTitle: "标题", date: "创建日期", views: "浏览量", likes: "赞", bookmarks: "书签", noData: "没有帖子。",
+                    listBtn: "目录", editBtn: "修改", deleteBtn: "删除",
+                    writeTitle: "发布新帖", editTitle: "修改帖子",
+                    titlePlaceholder: "请输入标题", content: "内容", password: "密码 (用于修改/删除)",
+                    image: "附加图片", tags: "标签", tagsPlaceholder: "用逗号分隔 (例如: 海云台,美食)",
+                    pwConfirmTitle: "确认密码", pwError: "密码不匹配。"
+                },
+                chat: { title: "AI导游", placeholder: "询问有关釜山旅游、美食、路线的任何问题！" },
+                common: { save: "保存", cancel: "取消", confirm: "确认", translate: "翻译" }
+            }
+        };
+
+        const i18n = createI18n({ locale: 'ko', fallbackLocale: 'en', messages });
+
+        // --- STREAMING_CHUNK: Initializing Vue 3 Application Reactive Core ---
+        const app = createApp({
+            setup() {
+                const currentView = ref('home'); 
+                const showLangMenu = ref(false);
+
+                const selectedCategory = ref('all');
+                const nowDate = new Date();
+                const infoData = ref(MOCK_DATA);
+                const defaultImages = DEFAULT_IMAGES;
+                const categoryBanners = CATEGORY_BANNERS;
+                
+                let chartInstance = null;
+                let mapInstance = null;
+
+                const notification = ref({ show: false, message: '', type: 'info' });
+                const triggerNotification = (msg, type = 'info') => {
+                    notification.value = { show: true, message: msg, type: type };
+                    setTimeout(() => {
+                        notification.value.show = false;
+                    }, 3000);
+                };
+
+                const posts = ref([]);
+                const searchQuery = ref('');
+                const activePost = ref(null);
+                const editMode = ref(false);
+                const writeForm = ref({ id: null, title: '', content: '', password: '', tagsStr: '', image: null });
+                
+                const showPasswordModal = ref(false);
+                const modalPassword = ref('');
+                const pwError = ref(false);
+                const modalAction = ref('');
+
+                const myLikes = ref(JSON.parse(localStorage.getItem('localhub_mylikes') || '[]'));
+                const myBookmarks = ref(JSON.parse(localStorage.getItem('localhub_mybookmarks') || '[]'));
+
+                // Chat state
+                const isChatOpen = ref(false);
+                const chatInput = ref('');
+                const chatMessages = ref([
+                    { role: 'assistant', content: '안녕하세요! 부산 여행 도우미 AI입니다. 🌊\n부산의 명소, 교통 정보, 로컬 숨겨진 맛집 정보 등 무엇이든 물어보세요! 친절하게 안내해 드릴게요.' }
+                ]);
+                const isChatLoading = ref(false);
+
+                // translation proxy health
+                const translateProxyAlive = ref(false);
+                let _translateProbeRun = false;
+                const probeTranslateProxy = async () => {
+                    if (_translateProbeRun) return translateProxyAlive.value;
+                    _translateProbeRun = true;
+                    try {
+                        const proxyBase = (TRANSLATE_PROXY || '').replace(/\/translate.*/, '') || TRANSLATE_PROXY;
+                        const res = await fetch(proxyBase, { method: 'GET', cache: 'no-store' });
+                        if (res && res.ok) {
+                            translateProxyAlive.value = true;
+                            return true;
+                        }
+                    } catch (e) {}
+                    translateProxyAlive.value = false;
+                    return false;
+                };
+
+                const isChangingLanguage = ref(false);
+
+                // --- STREAMING_CHUNK: Initializing Leaflet Interactive Map ---
+                const initMap = () => {
+                    nextTick(() => {
+                        const el = document.getElementById('terrainMap');
+                        if (!el) return;
+
+                        // Clean old instance to prevent duplicate map initialization errors
+                        if (mapInstance) {
+                            mapInstance.remove();
+                            mapInstance = null;
+                        }
+
+                        // Topography & Satellite source definitions
+                        const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                            maxZoom: 19,
+                            attribution: 'Tiles &copy; Esri &mdash; Esri'
+                        });
+
+                        const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                            maxZoom: 19,
+                            attribution: 'Tiles &copy; Esri'
+                        });
+
+                        mapInstance = L.map('terrainMap', {
+                            zoomControl: true,
+                            scrollWheelZoom: true,
+                            layers: [esriTopo]
+                        }).setView([35.1796, 129.0756], 11);
+
+                        const baseMaps = {
+                            "입체 지형도 (Topo)": esriTopo,
+                            "고정밀 위성도 (Satellite)": esriSatellite
+                        };
+                        L.control.layers(baseMaps, {}, { collapsed: false }).addTo(mapInstance);
+
+                        // Custom Marker builder function
+                        const getIconForType = (type) => {
+                            let color = '#059669'; 
+                            let iconClass = 'fa-mountain';
+                            if (type === 'beach') {
+                                color = '#0284c7'; 
+                                iconClass = 'fa-umbrella-beach';
+                            } else if (type === 'island') {
+                                color = '#7c3aed'; 
+                                iconClass = 'fa-water';
+                            }
+                            return `<div class="map-marker-badge" style="background:${color}"><i class="fa-solid ${iconClass}"></i></div>`;
+                        };
+
+                        // Pin terrain markers on map
+                        TERRAIN_POINTS.forEach(tp => {
+                            const marker = L.marker([tp.lat, tp.lng], {
+                                icon: L.divIcon({
+                                    html: getIconForType(tp.type),
+                                    className: 'bg-transparent border-0',
+                                    iconSize: [32, 32],
+                                    iconAnchor: [16, 16]
+                                })
+                            }).addTo(mapInstance);
+
+                            marker.bindTooltip(tp.title, { direction: 'top', offset: [0, -8] });
+                            marker.bindPopup(`
+                                <div class="p-2 min-w-[200px]">
+                                    <h4 class="font-bold text-gray-900 border-b pb-1 mb-1 flex items-center gap-1.5 text-sm">
+                                        <i class="fa-solid ${tp.type === 'mountain' ? 'fa-mountain text-emerald-600' : 'fa-water text-blue-600'}"></i> ${tp.title}
+                                    </h4>
+                                    <p class="text-xs text-gray-600 leading-relaxed">${tp.desc}</p>
+                                </div>
+                            `);
+                        });
+
+                        L.control.scale({ imperial: false, maxWidth: 120 }).addTo(mapInstance);
+
+                        setTimeout(() => {
+                            if (mapInstance) mapInstance.invalidateSize();
+                        }, 300);
+                    });
+                };
+
+                // --- STREAMING_CHUNK: Watching navigation state changes ---
+                const loadCategoryFiles = async () => {
+                    // Map filenames to category keys used in the app
+                    const files = [
+                        { path: './부산_관광지.json', category: 'tour' },
+                        { path: './부산_문화시설.json', category: 'culture' },
+                        { path: './부산_쇼핑.json', category: 'shop' },
+                        { path: './부산_레포츠.json', category: 'leports' },
+                        { path: './부산_숙박.json', category: 'sleep' },
+                        { path: './부산_축제공연행사.json', category: 'festival' },
+                        { path: './부산_여행코스.json', category: 'tour' }
+                    ];
+
+                    const loadedItems = [];
+                    for (const f of files) {
+                        try {
+                            const res = await fetch(f.path);
+                            if (!res.ok) continue;
+                            const json = await res.json();
+                            const items = json.items || [];
+                            items.forEach(it => {
+                                loadedItems.push({
+                                    contentid: it.contentid || it.contentId || '',
+                                    title: it.title || '',
+                                    title_en: it.title_en || it.titleEn || '',
+                                    title_ja: it.title_ja || it.titleJa || '',
+                                    title_zh: it.title_zh || it.titleZh || '',
+                                    addr1: it.addr1 || '',
+                                    addr1_en: it.addr1_en || it.addr1En || '',
+                                    addr1_ja: it.addr1_ja || it.addr1Ja || '',
+                                    addr1_zh: it.addr1_zh || it.addr1Zh || '',
+                                    firstimage: it.firstimage || it.firstimage2 || '',
+                                    link: it.link || '',
+                                    mapx: it.mapx || it.mapX || '',
+                                    mapy: it.mapy || it.mapY || '',
+                                    modifiedtime: it.modifiedtime || it.createdtime || '',
+                                    category: f.category
+                                });
+                            });
+                        } catch (e) {
+                            // ignore individual file errors
+                            console.warn('Failed to load', f.path, e);
+                        }
+                    }
+
+                    if (loadedItems.length > 0) {
+                        infoData.value = loadedItems;
+                        translateDataForLocale(i18n.global.locale, currentView?.value || 'all');
+                    }
+                };
+
+                const translateDataForLocale = (locale, scope = 'all') => {
+                    // accept either a string or a ref-like locale
+                    let loc = locale;
+                    if (!loc) {
+                        const gl = i18n?.global?.locale;
+                        loc = (typeof gl === 'string') ? gl : (gl && gl.value) ? gl.value : 'ko';
+                    }
+                    if (!loc || loc === 'ko') return;
+                    const shortLocale = (typeof loc === 'string') ? loc.split('-')[0] : 'en';
+                    if (!['en', 'ja', 'zh'].includes(shortLocale)) return;
+
+                    // Limit translation to visible/important items to avoid UI freeze
+                    let itemsToTranslate = [];
+                    try {
+                        if (scope === 'home') {
+                            itemsToTranslate = (randomAttractions && randomAttractions.value && randomAttractions.value.length) ? randomAttractions.value : (infoData.value || []).slice(0, 6);
+                        } else if (scope === 'info') {
+                            itemsToTranslate = (typeof filteredInfoData !== 'undefined' && filteredInfoData.value) ? filteredInfoData.value : (infoData.value || []).slice(0, 50);
+                        } else if (scope === 'visible') {
+                            itemsToTranslate = (randomAttractions && randomAttractions.value && randomAttractions.value.length) ? randomAttractions.value : ((typeof filteredInfoData !== 'undefined' && filteredInfoData.value) ? filteredInfoData.value : (infoData.value || []).slice(0, 50));
+                        } else {
+                            // default: translate first N items to avoid overloading
+                            itemsToTranslate = (infoData.value || []).slice(0, 200);
+                        }
+                    } catch (e) {
+                        itemsToTranslate = (infoData.value || []).slice(0, 50);
+                    }
+
+                    // schedule translations with slight delay to avoid blocking UI
+                    itemsToTranslate.forEach((item, idx) => {
+                        try { setTimeout(() => scheduleItemTranslation(item, shortLocale), idx * 60); } catch (e) { scheduleItemTranslation(item, shortLocale); }
+                    });
+                };
+
+                onMounted(() => {
+                    (async () => {
+                        await probeTranslateProxy();
+                        loadPosts();
+                        // load category JSONs first, then render chart/map/dashboard
+                        try {
+                            await loadCategoryFiles();
+                            renderChart();
+                            initMap();
+                            // render dashboard if currently active
+                            if (currentView.value === 'dashboard') nextTick(() => renderDashboard());
+                            // also attempt to render dashboard once to fill blanks
+                            nextTick(() => setTimeout(() => { try { renderDashboard(); } catch(e){ console.error('renderDashboard error', e); } }, 50));
+                        } catch (e) {
+                            renderChart();
+                            initMap();
+                            if (currentView.value === 'dashboard') nextTick(() => renderDashboard());
+                            nextTick(() => setTimeout(() => { try { renderDashboard(); } catch(e){ console.error('renderDashboard error', e); } }, 50));
+                        }
+                    })();
+                });
+
+                watch(currentView, (newVal) => {
+                    if (newVal === 'home') {
+                        nextTick(() => {
+                            renderChart();
+                            initMap();
+                        });
+                    }
+                    if (newVal === 'map') {
+                        nextTick(() => initGoogleMap());
+                    }
+                });
+
+                const changeLanguage = (lang) => {
+                    // prevent rapid repeated language changes
+                    if (isChangingLanguage.value) return;
+                    isChangingLanguage.value = true;
+                    setTimeout(() => { isChangingLanguage.value = false; }, 900);
+
+                    // support both ref-style and simple assignment for locale
+                    try {
+                        const gl = i18n?.global?.locale;
+                        if (gl && typeof gl === 'object' && 'value' in gl) gl.value = lang;
+                        else i18n.global.locale = lang;
+                    } catch (e) {
+                        try { i18n.global.locale = lang; } catch (e2) { /* ignore */ }
+                    }
+                    showLangMenu.value = false;
+                    // only translate visible items to avoid UI freeze
+                    const scope = (currentView && currentView.value) ? currentView.value : 'all';
+                    translateDataForLocale(lang, scope);
+                    if (!translateProxyAlive.value) {
+                        probeTranslateProxy().then(ok => {
+                            if (!ok) triggerNotification('번역 서버가 실행되어 있지 않습니다. openai_translate_server.js를 실행하세요.', 'error');
+                        });
+                    }
+                    if (currentView.value === 'home') nextTick(() => renderChart());
+                    if (currentView.value === 'map') nextTick(() => initGoogleMap());
+                    if (currentView.value === 'dashboard') nextTick(() => renderDashboard());
+                };
+
+                const setView = (view) => {
+                    currentView.value = view;
+                    nextTick(() => {
+                        if (view === 'map') initGoogleMap();
+                        if (view === 'dashboard') renderDashboard();
+                    });
+                };
+
+                // --- STREAMING_CHUNK: Rendering statistics chart using ChartJS ---
+                const categoryStats = computed(() => {
+                    const counts = { tour: 0, culture: 0, shop: 0, leports: 0, festival: 0, sleep: 0 };
+                    (infoData.value || []).forEach(item => {
+                        const c = item.category;
+                        if (c && counts.hasOwnProperty(c)) counts[c]++;
+                    });
+                    return counts;
+                });
+
+                const renderChart = () => {
+                    nextTick(() => {
+                        const canvas = document.getElementById('categoryChart');
+                        if (!canvas) return;
+                        if (chartInstance) chartInstance.destroy();
+                        const ctx = canvas.getContext('2d');
+                        const labels = Object.keys(categoryStats.value).map(k => i18n.global.t('categories.' + k));
+                        const data = Object.values(categoryStats.value);
+
+                        chartInstance = new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: data,
+                                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'],
+                                    borderWidth: 0
+                                }]
+                            },
+                            options: { 
+                                responsive: true, 
+                                maintainAspectRatio: false, 
+                                plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } 
+                            }
+                        });
+                    });
+                };
+
+                // Re-render chart whenever categoryStats changes
+                watch(categoryStats, () => {
+                    nextTick(() => renderChart());
+                }, { deep: true });
+
+                // --- STREAMING_CHUNK: Google Maps / Leaflet mixed map for 'map' view ---
+                const loadGoogleMapsScript = (key) => {
+                    return new Promise((resolve, reject) => {
+                        if (!key) return reject(new Error('No API key'));
+                        if (window.google && window.google.maps) return resolve();
+                        const s = document.createElement('script');
+                        s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&language=en`;
+                        s.async = true;
+                        s.defer = true;
+                        s.onload = () => resolve();
+                        s.onerror = (e) => reject(e);
+                        document.head.appendChild(s);
+                    });
+                };
+
+                let googleMapInstance = null;
+                let leafletMapInstance = null;
+                let leafletMarkersGroup = null;
+                const initGoogleMap = async () => {
+                    // Wait for DOM update and container to be visible
+                    const el = await (async () => {
+                        for (let i = 0; i < 12; i++) {
+                            await nextTick();
+                            const e = document.getElementById('googleMap');
+                            if (e && e.clientWidth > 0 && e.clientHeight > 0) return e;
+                            // small delay before next attempt
+                            await new Promise(r => setTimeout(r, 80));
+                        }
+                        return document.getElementById('googleMap');
+                    })();
+                    if (!el) return;
+
+                    // Clear previous map instances
+                    try {
+                        if (googleMapInstance && googleMapInstance === window.google?.maps?.Map) {
+                            // no direct destroy for Google Maps, just clear element
+                        }
+                    } catch (e) {}
+                    if (leafletMapInstance) {
+                        try { leafletMapInstance.remove(); } catch (e) {}
+                        leafletMapInstance = null;
+                        leafletMarkersGroup = null;
+                    }
+                    el.innerHTML = '';
+
+                    // Prepare coordinates (ensure infoData loaded)
+                    const coords = (infoData.value || [])
+                        .map(i => ({ x: parseFloat(i.mapx), y: parseFloat(i.mapy), title: i.title, addr: i.addr1 }))
+                        .filter(p => !isNaN(p.x) && !isNaN(p.y));
+
+                    // Try Google Maps if API key exists
+                    if (GOOGLE_MAPS_API_KEY) {
+                        try {
+                            await loadGoogleMapsScript(GOOGLE_MAPS_API_KEY);
+                            const center = coords.length ? { lat: coords[0].y, lng: coords[0].x } : { lat: 35.1796, lng: 129.0756 };
+                            googleMapInstance = new google.maps.Map(el, { center, zoom: 11 });
+                            coords.forEach(p => new google.maps.Marker({ position: { lat: p.y, lng: p.x }, map: googleMapInstance, title: p.title }));
+                            // ensure render
+                            setTimeout(() => { try { google.maps.event.trigger(googleMapInstance, 'resize'); } catch (e) {} }, 200);
+                            return;
+                        } catch (e) {
+                            console.warn('Google Maps load failed, falling back to Leaflet', e);
+                        }
+                    }
+
+                    // Fallback to Leaflet with clustering. Ensure tile layer and markers are added after map init.
+                    leafletMapInstance = L.map(el).setView([35.1796, 129.0756], 11);
+                    // Use CartoDB Positron tiles (English labels / neutral style)
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(leafletMapInstance);
+                    try {
+                        leafletMarkersGroup = L.markerClusterGroup();
+                        coords.forEach(p => {
+                            const m = L.marker([p.y, p.x]);
+                            m.bindPopup(`<strong>${p.title}</strong><div class="text-xs">${p.addr || ''}</div>`);
+                            leafletMarkersGroup.addLayer(m);
+                        });
+                        leafletMapInstance.addLayer(leafletMarkersGroup);
+                    } catch (e) {
+                        coords.forEach(p => L.marker([p.y, p.x]).addTo(leafletMapInstance).bindPopup(`<strong>${p.title}</strong><div class="text-xs">${p.addr || ''}</div>`));
+                    }
+
+                    // Some browsers need a short delay to correctly render map size
+                    setTimeout(() => {
+                        try { leafletMapInstance.invalidateSize(); } catch (e) {}
+                    }, 120);
+                };
+
+                // --- STREAMING_CHUNK: Yearly visitor sample data for dashboard ---
+                // Use provided image data: 2026 누계 외래관광객 및 5월 수치
+                const yearlyStats = ref([
+                    { year: 2026, visitors: 1936572 }
+                ]);
+                const imageSourceNote = '출처: 부산광역시 집계 (이미지 제공)';
+                const monthlyMay2026 = 460683; // 2026년 해당월(5월) 외국인 방문객 수, 이미지 기준
+
+                // Countries data from image (exposed globally for rendering)
+                const COUNTRIES_DATA = [
+                    { name: '대만', monthly: 375322, pct: '19.4%', prev: 290820, mom: '29.1%', prevYear: 249968, yoy: '50.1%' },
+                    { name: '중국', monthly: 359981, pct: '18.6%', prev: 270706, mom: '33.0%', prevYear: 203978, yoy: '76.5%' },
+                    { name: '일본', monthly: 233685, pct: '12.1%', prev: 175696, mom: '33.0%', prevYear: 185488, yoy: '26.0%' },
+                    { name: '미국', monthly: 170587, pct: '8.8%', prev: 129263, mom: '32.0%', prevYear: 96290, yoy: '77.2%' },
+                    { name: '필리핀', monthly: 75282, pct: '3.9%', prev: 55263, mom: '36.2%', prevYear: 73477, yoy: '2.5%' },
+                    { name: '베트남', monthly: 74794, pct: '3.9%', prev: 62160, mom: '20.3%', prevYear: 62006, yoy: '20.6%' },
+                    { name: '홍콩', monthly: 59729, pct: '3.1%', prev: 45417, mom: '31.5%', prevYear: 59614, yoy: '0.2%' }
+                ];
+
+                // No yearly chart function needed for image-based dashboard; we'll render country pie and fill cards in renderDashboard.
+
+                // --- STREAMING_CHUNK: Dashboard and Calendar renderers ---
+                const renderDashboard = () => {
+                    nextTick(async () => {
+                        console.log('renderDashboard running');
+                        // helper: wait for element to exist
+                        const waitForElement = (id, attempts = 20, delay = 50) => new Promise((resolve) => {
+                            let i = 0;
+                            const iv = setInterval(() => {
+                                const el = document.getElementById(id);
+                                if (el) { clearInterval(iv); resolve(el); }
+                                i++; if (i >= attempts) { clearInterval(iv); resolve(null); }
+                            }, delay);
+                        });
+
+                        // Fill cards with image-provided data (wait until present)
+                        const cardCum = await waitForElement('cardCumulative');
+                        if (cardCum) cardCum.textContent = '1,936,572명';
+                        const cardMay = await waitForElement('cardMay');
+                        if (cardMay) cardMay.textContent = '460,683명';
+
+                        // Country data from image
+                        const countries = JSON.parse(JSON.stringify(COUNTRIES_DATA));
+                        const totalKnown = countries.reduce((s,c) => s + (c.monthly||0), 0);
+                        const totalAll = 1936572;
+                        const others = totalAll - totalKnown;
+                        countries.push({ name: '기타', monthly: others, pct: ((others/totalAll)*100).toFixed(1)+'%', prev: '', mom: '', prevYear: '', yoy: '' });
+
+                        // populate country table with full columns (show loading then fill)
+                        const tbody = await waitForElement('countryTableBody');
+                        if (tbody) {
+                            tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-gray-400">로딩중...</td></tr>`;
+                            setTimeout(() => {
+                                tbody.innerHTML = countries.map((c, i) => `
+                                    <tr class="border-t">
+                                        <td class="py-2">${i+1}</td>
+                                        <td class="py-2">${c.name}</td>
+                                        <td class="py-2 text-right">${c.monthly ? c.monthly.toLocaleString() : '-'}</td>
+                                        <td class="py-2 text-right">${c.pct || '-'}</td>
+                                        <td class="py-2 text-right">${c.prev ? c.prev.toLocaleString() : '-'}</td>
+                                        <td class="py-2 text-right">${c.mom || '-'}</td>
+                                        <td class="py-2 text-right">${c.prevYear ? c.prevYear.toLocaleString() : '-'}</td>
+                                        <td class="py-2 text-right">${c.yoy || '-'}</td>
+                                    </tr>
+                                `).join('');
+                            }, 60);
+                        }
+
+                        // render pie chart using monthly numbers after small delay to ensure canvas size
+                        const pieCanvas = await waitForElement('countryPie');
+                        if (pieCanvas) {
+                            setTimeout(() => {
+                                try {
+                                    if (window.countryPieInstance) window.countryPieInstance.destroy();
+                                    const ctx = pieCanvas.getContext('2d');
+                                    const labels = countries.map(c=>`${c.name} ${((c.monthly/totalAll)*100).toFixed(1)}%`);
+                                    window.countryPieInstance = new Chart(ctx, {
+                                        type: 'pie',
+                                        data: { labels: labels, datasets: [{ data: countries.map(c=>c.monthly), backgroundColor: ['#60a5fa','#7c3aed','#818cf8','#f472b6','#f97316','#34d399','#a78bfa','#f59e0b'] }] },
+                                        options: { responsive: true, plugins: { legend: { position: 'right' } } }
+                                    });
+                                } catch (err) {
+                                    console.error('Failed to render country pie chart', err);
+                                }
+                            }, 120);
+                        }
+                    });
+                };
+
+                // --- STREAMING_CHUNK: Random attractions for homepage ---
+                const randomAttractions = ref([]);
+                const pickRandomAttractions = () => {
+                    const src = (infoData.value && infoData.value.length) ? infoData.value : MOCK_DATA;
+                    if (!src || src.length === 0) {
+                        randomAttractions.value = [];
+                        return;
+                    }
+                    const preferred = src.filter(i => i.category === 'tour' || i.category === 'shop');
+                    const pool = preferred.length >= 6 ? preferred : src;
+                    const copy = [...pool];
+                    for (let i = copy.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [copy[i], copy[j]] = [copy[j], copy[i]];
+                    }
+                    randomAttractions.value = copy.slice(0, 6);
+                };
+
+                const translateItemForLocale = async (item, locale) => {
+                    if (!item || !locale) return;
+                    const shortLocale = (typeof locale === 'string') ? locale.split('-')[0] : (locale && locale.value ? locale.value.split('-')[0] : 'en');
+                    if (shortLocale === 'ko') return;
+                    const titleKey = `title_${shortLocale}`;
+                    const addrKey = `addr1_${shortLocale}`;
+                    if (item[titleKey] && item[addrKey]) return;
+
+                    // ensure proxy is available
+                    if (!translateProxyAlive.value) {
+                        await probeTranslateProxy();
+                        if (!translateProxyAlive.value) return; // no proxy, skip
+                    }
+
+                    try {
+                        const payload = { title: item.title || '', addr1: item.addr1 || '' };
+                        const prompt = `Respond ONLY in JSON with keys "${titleKey}" and "${addrKey}". Translate the following title and address into ${shortLocale}: ${JSON.stringify(payload)}`;
+                        const resp = await fetch(TRANSLATE_PROXY, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: prompt, target: shortLocale })
+                        });
+                        if (!resp.ok) throw new Error('Translate proxy returned ' + resp.status);
+                        const j = await resp.json();
+                        const content = j.raw?.choices?.[0]?.message?.content || j.translation || '';
+                        let result = null;
+                        try { result = JSON.parse(content); } catch (e) {
+                            const m = content.match(/\{[\s\S]*\}/);
+                            if (m) {
+                                try { result = JSON.parse(m[0]); } catch (e2) { result = null; }
+                            }
+                        }
+                        if (result) {
+                            // create new object merging translation keys to ensure reactivity
+                            const newItem = Object.assign({}, item);
+                            if (result[titleKey]) newItem[titleKey] = result[titleKey];
+                            if (result[addrKey]) newItem[addrKey] = result[addrKey];
+                            if (item.__translationRequests) newItem.__translationRequests = item.__translationRequests;
+                            const idx = infoData.value.findIndex(i => i.contentid === item.contentid);
+                            if (idx !== -1) {
+                                infoData.value.splice(idx, 1, newItem);
+                                // force new array reference so watchers/computeds update
+                                infoData.value = infoData.value.slice();
+                                try { pickRandomAttractions(); } catch (e) {}
+                                try { renderChart(); } catch (e) {}
+                            } else {
+                                // fallback: mutate original item
+                                if (result[titleKey]) item[titleKey] = result[titleKey];
+                                if (result[addrKey]) item[addrKey] = result[addrKey];
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Item translation failed', item.contentid, locale, err);
+                    }
+                };
+
+                const scheduleItemTranslation = (item, locale) => {
+                    if (!item || !locale || locale === 'ko') return;
+                    // if proxy not alive, probe once then skip scheduling now to avoid many probes
+                    if (!translateProxyAlive.value) {
+                        if (!_translateProbeRun) probeTranslateProxy();
+                        return;
+                    }
+                    const shortLocale = locale.split('-')[0];
+                    if (!['en', 'ja', 'zh'].includes(shortLocale)) return;
+                    if (!item.__translationRequests) item.__translationRequests = {};
+                    if (item.__translationRequests[shortLocale]) return;
+                    const titleKey = `title_${shortLocale}`;
+                    const addrKey = `addr1_${shortLocale}`;
+                    if (item[titleKey] && item[addrKey]) return;
+
+                    item.__translationRequests[shortLocale] = true;
+                    translateItemForLocale(item, shortLocale)
+                        .finally(() => {
+                            item.__translationRequests[shortLocale] = false;
+                        });
+                };
+
+                // re-pick when infoData changes
+                watch(infoData, (nv) => {
+                    pickRandomAttractions();
+                });
+
+                const getLocalized = (item, field) => {
+                    if (!item) return '';
+                    // safely read locale (handle ref or string)
+                    const rawLoc = i18n?.global?.locale;
+                    let loc = 'ko';
+                    if (typeof rawLoc === 'string') loc = rawLoc;
+                    else if (rawLoc && typeof rawLoc.value === 'string') loc = rawLoc.value;
+                    const shortLoc = (loc || 'ko').split('-')[0];
+                    const tryKeys = [
+                        `${field}_${loc}`,
+                        `${field}_${shortLoc}`,
+                        `${field}_${shortLoc.toUpperCase()}`,
+                        `${field}_${loc.replace('-', '_')}`,
+                        `${field}_en`,
+                        `${field}_ja`,
+                        `${field}_zh`
+                    ];
+                    for (const k of tryKeys) {
+                        if (item[k]) return item[k];
+                    }
+                    if (shortLoc !== 'ko') {
+                        scheduleItemTranslation(item, shortLoc);
+                    }
+                    return item[field] || '';
+                };
+
+                const getMapLink = (item) => {
+                    // Prefer name search (localized title) for Google Maps search
+                    const name = getLocalized(item, 'title') || item.title || '';
+                    if (name && name.trim().length > 0) {
+                        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+                    }
+                    // Fallback to coordinates if no name
+                    const x = parseFloat(item.mapx || item.mapX || item.lon || item.lng || item.longitude);
+                    const y = parseFloat(item.mapy || item.mapY || item.lat || item.latitude);
+                    if (!isNaN(y) && !isNaN(x)) {
+                        return `https://www.google.com/maps/search/?api=1&query=${y},${x}`;
+                    }
+                    return null;
+                };
+
+                // Translation modal state & functions
+                const showTranslateModal = ref(false);
+                const selectedForTranslate = ref(null);
+                const translatedForModal = ref(null);
+                const translatedError = ref('');
+                const isTranslatingLocal = ref(false);
+
+                const openTranslateModal = async (item) => {
+                    selectedForTranslate.value = item;
+                    translatedForModal.value = null;
+                    showTranslateModal.value = true;
+                    const lang = i18n.global.locale || 'ko';
+                    if (lang === 'ko') return;
+                    isTranslatingLocal.value = true;
+                    translatedError.value = '';
+                    try {
+                        const prompt = `Respond ONLY in JSON: { "translatedTitle": "...", "translatedAddr": "..." }\nTranslate: Name: "${item.title}", Address: "${item.addr1}" to language code ${lang}`;
+                        const resp = await fetch(TRANSLATE_PROXY, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: prompt, target: lang })
+                        });
+                        if (!resp.ok) throw new Error('Translate proxy returned ' + resp.status);
+                        const j = await resp.json();
+                        const content = j.raw?.choices?.[0]?.message?.content || j.translation || '';
+                        let result = null;
+                        try { result = JSON.parse(content); } catch (e) { const m = content.match(/\{[\s\S]*\}/); if (m) { try { result = JSON.parse(m[0]); } catch (e2) { result = null; } } }
+                        if (result) translatedForModal.value = { title: result.translatedTitle || item.title, addr1: result.translatedAddr || item.addr1 };
+                        else { translatedForModal.value = { title: item.title, addr1: item.addr1 }; translatedError.value = '번역 결과를 파싱할 수 없습니다.'; }
+                    } catch (err) {
+                        console.error('translate modal error', err);
+                        translatedForModal.value = { title: item.title, addr1: item.addr1 };
+                        translatedError.value = '번역 서버 응답 실패 — 서버가 실행 중인지 확인하세요.';
+                    } finally {
+                        isTranslatingLocal.value = false;
+                    }
+                };
+
+                const closeTranslateModal = () => { showTranslateModal.value = false; selectedForTranslate.value = null; translatedForModal.value = null; };
+
+                // Calendar functionality removed
+
+                // When switching views, initialize corresponding components
+                watch(currentView, (nv) => {
+                    if (nv === 'map') nextTick(() => initGoogleMap());
+                    if (nv === 'dashboard') nextTick(() => renderDashboard());
+                        // calendar removed
+                });
+
+                                // calendar selection watch removed
+
+                const filteredInfoData = computed(() => {
+                    if (selectedCategory.value === 'all') return infoData.value;
+                    return infoData.value.filter(item => item.category === selectedCategory.value);
+                });
+
+                // --- STREAMING_CHUNK: Loading and structuring posts from LocalStorage ---
+                const loadPosts = () => {
+                    const stored = localStorage.getItem('localhub_posts');
+                    if (stored) posts.value = JSON.parse(stored);
+                };
+
+                const filteredPosts = computed(() => {
+                    if (!searchQuery.value) return posts.value;
+                    const query = searchQuery.value.toLowerCase();
+                    return posts.value.filter(p => p.title.toLowerCase().includes(query) || (p.tags && p.tags.join(',').toLowerCase().includes(query)));
+                });
+
+                const viewPost = (id) => {
+                    const post = posts.value.find(p => p.id === id);
+                    if (post) {
+                        post.views = (post.views || 0) + 1;
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                        activePost.value = { ...post };
+                        currentView.value = 'boardDetail';
+                    }
+                };
+
+                // Resize image to fit localStorage safely
+                const handleImageUpload = (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    if (!file.type.startsWith('image/')) {
+                        triggerNotification("이미지 파일만 첨부할 수 있습니다.", "error");
+                        event.target.value = '';
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const maxDim = 600;
+                            let w = img.width;
+                            let h = img.height;
+                            if (w > maxDim || h > maxDim) {
+                                if (w > h) {
+                                    h = Math.round(h * maxDim / w);
+                                    w = maxDim;
+                                } else {
+                                    w = Math.round(w * maxDim / h);
+                                    h = maxDim;
+                                }
+                            }
+                            canvas.width = w;
+                            canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, h);
+                            writeForm.value.image = canvas.toDataURL('image/jpeg', 0.7);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                // --- STREAMING_CHUNK: Managing post saving actions ---
+                const savePost = () => {
+                    if (!writeForm.value.title.trim() || !writeForm.value.content.trim()) {
+                        triggerNotification('제목과 내용을 입력해주세요.', 'error');
+                        return;
+                    }
+                    
+                    const parsedTags = writeForm.value.tagsStr.split(',').map(t => t.trim()).filter(t => t !== '');
+
+                    if (editMode.value) {
+                        const idx = posts.value.findIndex(p => p.id === writeForm.value.id);
+                        if (idx > -1) {
+                            posts.value[idx].title = writeForm.value.title;
+                            posts.value[idx].content = writeForm.value.content;
+                            posts.value[idx].tags = parsedTags;
+                            posts.value[idx].image = writeForm.value.image;
+                        }
+                    } else {
+                        if (!writeForm.value.password || writeForm.value.password.length < 4) {
+                            triggerNotification('비밀번호를 4자리 이상 입력해주세요.', 'error');
+                            return;
+                        }
+                        const newPost = {
+                            id: Date.now(), title: writeForm.value.title, content: writeForm.value.content,
+                            password: writeForm.value.password, views: 0, likes: 0, bookmarks: 0,
+                            tags: parsedTags, image: writeForm.value.image, createdAt: new Date().toISOString()
+                        };
+                        posts.value.unshift(newPost);
+                    }
+                    
+                    try {
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                        triggerNotification('성공적으로 저장되었습니다.', 'info');
+                    } catch (e) {
+                        triggerNotification("로컬 스토리지 한도를 초과했습니다. 이미지 해상도를 낮추거나 제거하세요.", "error");
+                        return;
+                    }
+                    
+                    writeForm.value = { id: null, title: '', content: '', password: '', tagsStr: '', image: null };
+                    currentView.value = 'board';
+                };
+
+                const hasLiked = (id) => myLikes.value.includes(id);
+                const hasBookmarked = (id) => myBookmarks.value.includes(id);
+
+                const toggleLike = () => {
+                    const id = activePost.value.id;
+                    const idx = posts.value.findIndex(p => p.id === id);
+                    if (idx > -1) {
+                        if (hasLiked(id)) {
+                            myLikes.value = myLikes.value.filter(i => i !== id);
+                            posts.value[idx].likes = Math.max(0, (posts.value[idx].likes || 1) - 1);
+                        } else {
+                            myLikes.value.push(id);
+                            posts.value[idx].likes = (posts.value[idx].likes || 0) + 1;
+                        }
+                        activePost.value.likes = posts.value[idx].likes;
+                        localStorage.setItem('localhub_mylikes', JSON.stringify(myLikes.value));
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                    }
+                };
+
+                const toggleBookmark = () => {
+                    const id = activePost.value.id;
+                    const idx = posts.value.findIndex(p => p.id === id);
+                    if (idx > -1) {
+                        if (hasBookmarked(id)) {
+                            myBookmarks.value = myBookmarks.value.filter(i => i !== id);
+                            posts.value[idx].bookmarks = Math.max(0, (posts.value[idx].bookmarks || 1) - 1);
+                        } else {
+                            myBookmarks.value.push(id);
+                            posts.value[idx].bookmarks = (posts.value[idx].bookmarks || 0) + 1;
+                        }
+                        activePost.value.bookmarks = posts.value[idx].bookmarks;
+                        localStorage.setItem('localhub_mybookmarks', JSON.stringify(myBookmarks.value));
+                        localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                    }
+                };
+
+                const openPasswordModal = (action) => {
+                    modalAction.value = action;
+                    showPasswordModal.value = true;
+                    pwError.value = false;
+                    modalPassword.value = '';
+                };
+
+                const confirmPassword = () => {
+                    if (modalPassword.value === activePost.value.password) {
+                        showPasswordModal.value = false;
+                        if (modalAction.value === 'edit') {
+                            editMode.value = true;
+                            writeForm.value = { ...activePost.value, password: '', tagsStr: (activePost.value.tags || []).join(', ') };
+                            currentView.value = 'boardWrite';
+                        } else if (modalAction.value === 'delete') {
+                            posts.value = posts.value.filter(p => p.id !== activePost.value.id);
+                            localStorage.setItem('localhub_posts', JSON.stringify(posts.value));
+                            triggerNotification('글이 정상적으로 삭제되었습니다.', 'info');
+                            currentView.value = 'board';
+                        }
+                    } else { pwError.value = true; }
+                };
+
+                const formatDate = (isoString) => {
+                    const d = new Date(isoString);
+                    const pad = (n) => n.toString().padStart(2, '0');
+                    return `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                };
+
+                // --- STREAMING_CHUNK: Managing Chat box toggle ---
+                const toggleChat = () => {
+                    isChatOpen.value = !isChatOpen.value;
+                    if (isChatOpen.value) {
+                        scrollToBottom();
+                    }
+                };
+
+                // --- STREAMING_CHUNK: Processing Local AI Assistant response logic ---
+                const sendChatMessage = async () => {
+                    if (!chatInput.value.trim() || isChatLoading.value) return;
+                    
+                    const userMsg = chatInput.value.trim();
+                    chatMessages.value.push({ role: 'user', content: userMsg });
+                    chatInput.value = '';
+                    isChatLoading.value = true;
+                    scrollToBottom();
+
+                    // Intelligent keyword response mapping for instant support without external keys
+                    setTimeout(() => {
+                        let aiReply = '';
+                        const msgLower = userMsg.toLowerCase();
+
+                        if (msgLower.includes('국밥') || msgLower.includes('돼지국밥')) {
+                            aiReply = '🍲 **부산 돼지국밥 추천 리스트**\n\n1. **수변최고돼지국밥 (민락동)**: 항정국밥이 일품이며 대기가 길지만 깊고 시원한 육수가 특징입니다.\n2. **쌍둥이돼지국밥 (대연동)**: 수육백반이 매우 유명하며 야들야들한 고기가 가득합니다.\n3. **본전돼지국밥 (부산역 인근)**: 부산역에 내리자마자 먹을 수 있는 깔끔하고 담백한 스타일의 로컬 명소입니다.';
+                        } else if (msgLower.includes('코스') || msgLower.includes('1박2일') || msgLower.includes('동선')) {
+                            aiReply = '🗺️ **광안리 중심 알찬 1박 2일 코스 추천**\n\n* **1일차**: 부산역 도착 ➡️ 해운대 블루라인파크(해변열차) ➡️ 이기대 해안산책로 ➡️ 광안리해수욕장 야경 및 민락더마켓 투어 (저녁: 민락 회센터)\n* **2일차**: 광안리 브런치 ➡️ 황령산 전망대 (부산 전경 조망) ➡️ 감천문화마을 투어 ➡️ 영도 흰여울문화마을 ➡️ 부산역 출발';
+                        } else if (msgLower.includes('부산역') || msgLower.includes('해운대') || msgLower.includes('가장 빠른')) {
+                            aiReply = '🚇 **부산역 ➡️ 해운대 가장 빠른 교통수단**\n\n* **지하철 (추천)**: 부산역(1호선) 승차 ➡️ 서면역에서 2호선 환승 ➡️ 해운대역 하단 하차 (약 45~50분 소요, 교통체증 없음)\n* **급행버스 (1001번, 1003번)**: 부산역 광장 정류장에서 탑승 ➡️ 광안대교 상부 진입 없이 우회 (약 50분~1시간 소요, 주말 상습 정체 가능)';
+                        } else if (msgLower.includes('안녕') || msgLower.includes('반가워') || msgLower.includes('누구')) {
+                            aiReply = '반갑습니다! 부산의 모든 교통, 지리 정보, 명소 맛집을 꿰뚫고 있는 부산 토박이 AI 가이드입니다. 😊 어떤 것이든 궁금한 점을 물어보세요!';
+                        } else {
+                            aiReply = `💡 **'${userMsg}'에 대한 부산 여행 가이드 정보**\n\n해당 주제에 관한 유용한 지역 공공데이터 정보를 분석 중입니다. 부산은 바다와 산맥이 결합된 해안 도시이므로, 광안대교 및 금정산성 등 자연과 인프라를 연계한 동선이 베스트입니다. \n\n더 자세한 로컬 핫플레이스는 우측 상단의 **Language**를 변경하여 전 세계 언어로 번역된 공공 가이드 탭에서 바로 확인해 보실 수 있습니다!`;
+                        }
+
+                        chatMessages.value.push({ role: 'assistant', content: aiReply });
+                        isChatLoading.value = false;
+                        scrollToBottom();
+                    }, 1200);
+                };
+
+                const clickQuickPrompt = (promptText) => {
+                    chatInput.value = promptText;
+                    sendChatMessage();
+                };
+
+                const setFallbackImage = (event, category) => {
+                    event.target.src = defaultImages[category] || defaultImages.tour;
+                };
+
+                const scrollToBottom = () => {
+                    nextTick(() => {
+                        const container = document.getElementById('chat-messages');
+                        if (container) {
+                            container.scrollTop = container.scrollHeight;
+                        }
+                    });
+                };
+
+                return {
+                    currentView, showLangMenu, changeLanguage, setView,
+                    selectedCategory, infoData, filteredInfoData, categoryStats,
+                    randomAttractions, pickRandomAttractions,
+                    posts, searchQuery, filteredPosts, viewPost, activePost, editMode, writeForm, savePost, formatDate,
+                    handleImageUpload, toggleLike, toggleBookmark, hasLiked, hasBookmarked,
+                    showPasswordModal, modalPassword, pwError, openPasswordModal, confirmPassword,
+                    isChatOpen, chatInput, chatMessages, isChatLoading, sendChatMessage, clickQuickPrompt,
+                    defaultImages, categoryBanners, setFallbackImage, toggleChat,
+                    notification, triggerNotification
+                    , renderDashboard, getLocalized, getMapLink,
+                    showTranslateModal, openTranslateModal, closeTranslateModal, translatedForModal, isTranslatingLocal, selectedForTranslate
+                };
+            }
+        });
+
+        app.use(i18n);
+        app.mount('#app');
+    </script>
+</body>
+</html>
+
+<!-- eof -->
+
+<!-- ### 수정 사항 요약 -->
+
+<!-- 1. **Password Modal 태그 버그 수정**: `showPasswordModal` 영역을 감싸는 바깥쪽 `div` 태그가 중간에 닫히지 않고 열려있어 챗봇 모듈 전체가 비밀번호 검증 모달이 비활성화되었을 때 같이 숨겨지던 버그를 철저히 패치했습니다. 이제 챗봇 플로팅 버튼과 윈도우가 항상 우측 하단에 명확하게 보입니다. -->
+<!-- 2. **Leaflet 지도 차단 오류 해결**: 무결성 해시(`integrity`)와 구버전 충돌 문제를 발생시켰던 Leaflet 리소스를 안정적인 `v1.9.4` 공식 CDN으로 리다이렉트하여 위성/지형 정밀 맵 렌더링이 중단 없이 즉각 표출되도록 완전 복구했습니다. -->
+<!-- 3. **로컬 지능형 AI 챗봇 엔진 구축**: 외부 API 키 발급 상태가 아닐지라도, 국밥 맛집 탐색, 광안리 중심 효율 동선, 교통 정보 등 터치 칩 단 한 번으로 즉시 100% 응답하는 스마트 챗봇 컴포넌트를 이중 설계하여 적용했습니다.

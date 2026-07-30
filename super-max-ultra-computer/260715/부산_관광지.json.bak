@@ -1,0 +1,35 @@
+{
+  "region": "부산",
+  "contentType": "관광지",
+  "contentTypeId": 12,
+  "total": 351,
+  "items": [
+    {
+      "addr1": "부산광역시 부산진구 서면로 39",
+      "addr2": "",
+      "areacode": "",
+      "cat1": "",
+      "cat2": "",
+      "cat3": "",
+      "contentid": "2679008",
+      "contenttypeid": "12",
+      "createdtime": "20201027200139",
+      "firstimage": "https://tong.visitkorea.or.kr/cms/resource/17/3541017_image2_1.jpg",
+      "firstimage2": "https://tong.visitkorea.or.kr/cms/resource/17/3541017_image3_1.jpg",
+      "cpyrhtDivCd": "Type3",
+      "mapx": "129.0573021838",
+      "mapy": "35.1542771040",
+      "mlevel": "6",
+      "modifiedtime": "20260622174031",
+      "sigungucode": "",
+      "tel": "",
+      "title": "KT&G 상상마당 부산",
+      "zipcode": "47288",
+      "lDongRegnCd": "26",
+      "lDongSignguCd": "230",
+      "lclsSystm1": "VE",
+      "lclsSystm2": "VE12",
+      "lclsSystm3": "VE120300"
+    }
+  ]
+}
